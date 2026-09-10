@@ -1,0 +1,12 @@
+{
+  "version": "0.2.2",
+  "releaseDate": "2026-09-10",
+  "productName": "豆角工具箱",
+  "changelog": "1. 修复对象存储 net::ERR_INVALID_ARGUMENT 网络连接异常（过滤 content-length 等保留头）\n2. 优化插件市场拉取机制，支持本地即刻展示与后台静默更新，网络超时提升至 60 秒\n3. 插件市场支持鼠标悬停查看各插件详细更新日志\n4. 完善项目说明文档与插件功能全景介绍",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v0.2.2/djtools-Setup-0.2.2.exe",
+  "fallbackUrls": [
+    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v0.2.2/djtools-Setup-0.2.2.exe"
+  ],
+  "size": 85578489,
+  "sha256": "9fe61df142f118dc5c9f68492625350b0446897451e1bdfa3a970333fec42a8f"
+}
