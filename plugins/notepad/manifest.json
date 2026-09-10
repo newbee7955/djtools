@@ -1,0 +1,22 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "notepad",
+  "publisher": "doujiao-official",
+  "name": "轻便记事本",
+  "version": "1.4.0",
+  "description": "零负担极速纯文本随手记，支持文件级密码强加密保护、多层级子目录新建与分类管理、本地时间轴快照、Git 版本控制与 Diff 对照、自定义另存为路径与默认保存目录配置",
+  "icon": "🗒️",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "workspace"
+    }
+  ],
+  "changelog": "【v1.4.0】新增便签密码访问与加密保护功能：支持对指定敏感便签开启 AES-256-GCM 硬件级强加密，密文安全落盘，列表防窥遮蔽，支持密码修改与一键解除加密"
+}

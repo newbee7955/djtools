@@ -1,0 +1,25 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "image-editor",
+  "publisher": "doujiao-official",
+  "name": "轻量图片编辑",
+  "version": "1.0.1",
+  "description": "极速轻量图片标注与涂鸦剪裁工具，支持剪贴板粘贴与拖拽导入、常用标注（矩形、圆形、箭头、自由画笔、荧光笔、序号标记、文字、隐私马赛克）、快速剪裁与翻转、一键复制到剪贴板与保存至工作目录",
+  "icon": "🖼️",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "workspace"
+    },
+    {
+      "capability": "clipboard.history"
+    }
+  ],
+  "changelog": "【v1.0.1】新增清空当前工作区画布功能；支持在图库抽屉中一键清空工作区图片与单张图片删除管理"
+}

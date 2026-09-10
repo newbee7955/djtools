@@ -1,0 +1,12 @@
+{
+  "version": "0.3.0",
+  "releaseDate": "2026-09-11",
+  "productName": "豆角工具箱",
+  "changelog": "1. 全新集成「时光相册 (Time Album)」：端侧边缘 AI 人脸检测与聚类分组、EXIF 拍摄时光轴画廊、「那年今日」历史横幅与沉浸式幻灯片播放\n2. 全新集成「图片编辑器 (Image Editor)」：自由与预设比例裁剪、几何旋转镜像、滤镜色彩微调与无损高清画板导出\n3. 轻便记事本 (Notepad v1.4.0) 重大安全升级：AES-256 全局主密码强加密、切出防窥自动加密上锁、删除加锁文件密码二次验证与层级子目录归档\n4. 宿主全主题自适应引擎重构：新增深度穿透技术 (LIGHT_THEME_CSS)，插件界面完美自动融入亮色与暗色模式\n5. Markdown 编辑器支持层级子目录与版本时间轴快照，全面强化物理文件存储可靠性",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v0.3.0/djtools-Setup-0.3.0.exe",
+  "fallbackUrls": [
+    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v0.3.0/djtools-Setup-0.3.0.exe"
+  ],
+  "size": 91356528,
+  "sha256": "244a57229099c8ad0e2eba65d8a471a3abc8cd718d1615caf13b501b147339be"
+}

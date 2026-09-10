@@ -1,0 +1,1196 @@
+{
+  "schemaVersion": 2,
+  "registryVersion": 76,
+  "updatedAt": "2026-09-10T10:58:58.502Z",
+  "plugins": [
+    {
+      "id": "douyin-downloader",
+      "publisher": "doujiao-official",
+      "name": "抖音视频/合集下载器",
+      "description": "支持抖音单视频、主页作品、合集与专题批量下载，支持多清晰度/分辨率流自主选择与无水印解析",
+      "icon": "assets/icon.png",
+      "releases": [
+        {
+          "version": "1.2.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T00:42:33.995Z",
+          "changelog": "【v1.2.1】修复新版抖音分享链接解析失败问题；优化无水印视频提取算法；改进批量解析的稳定性",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "www.douyin.com",
+                "*.douyinvod.com",
+                "*.amemv.com"
+              ],
+              "methods": [
+                "GET",
+                "POST"
+              ]
+            },
+            {
+              "capability": "download.enqueue"
+            },
+            {
+              "capability": "browser.login",
+              "domain": "douyin.com"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/douyin-downloader-v1.2.1.zip",
+              "size": 59948,
+              "sha256": "68204f3b69260b9355da4ad516c991a6b7032f980f8e67248c8fff8d6e070f4f",
+              "signature": "4D+7c2ARRXnPe24hlKSr0r8Bj7iArEq5kY0/vbP3KXWYQzw7ZBCvAFkrJesZRlsBT6GHFv4GESx/9iu7prbEAw=="
+            }
+          ]
+        },
+        {
+          "version": "1.2.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T15:24:57.878Z",
+          "changelog": "【v1.2.0】新增批量链接解析与下载队列；支持图集/图文内容下载；新增下载历史记录；优化视频封面预览展示",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "www.douyin.com",
+                "*.douyinvod.com",
+                "*.amemv.com"
+              ],
+              "methods": [
+                "GET",
+                "POST"
+              ]
+            },
+            {
+              "capability": "download.enqueue"
+            },
+            {
+              "capability": "browser.login",
+              "domain": "douyin.com"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/douyin-downloader-v1.2.0.zip",
+              "size": 59153,
+              "sha256": "0b5c01bb409b39c335d4021b82f18e332e41cb0b4218b686dc37766f74f60fc3",
+              "signature": "WTZqyDdK34lOLjxaUdVBkNpvKn7YemEsWZwD2r8QV52T1kKYrWgaZBGvY2mZG7vcqc4QBQi1j7heMkBZ3CjZDw=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bilibili-downloader",
+      "publisher": "doujiao-official",
+      "name": "B站视频/多P选集下载器",
+      "description": "支持 B 站高清视频解析、清晰度自主选择(1080P60/1080P/720P等)、分P/连载选集批量提取与自动混流",
+      "icon": "assets/icon.png",
+      "releases": [
+        {
+          "version": "1.0.2",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T00:42:33.820Z",
+          "changelog": "【v1.0.2】优化视频解析成功率；修复部分 BV 号无法识别的问题；增加超时重试机制；改进下载进度显示精度",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "api.bilibili.com",
+                "www.bilibili.com",
+                "b23.tv",
+                "*.bilivideo.com",
+                "*.hdslb.com"
+              ],
+              "methods": [
+                "GET",
+                "POST"
+              ]
+            },
+            {
+              "capability": "download.enqueue",
+              "formats": [
+                "mp4",
+                "m4s",
+                "flv"
+              ]
+            },
+            {
+              "capability": "media.merge"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/bilibili-downloader-v1.0.2.zip",
+              "size": 55946,
+              "sha256": "f710e00c6e7843522aa0aea71532874451aedcf51d4a9cdd7176185b6035dda7",
+              "signature": "jhzZ1iMRkwPYl+fEY2ZiEAZPmWcXIm3xqZDdBDoC/z34013CgGtfM87pBRVGvkNCeJwcJb2lyKOLxfgv/qFEAg=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T15:24:57.841Z",
+          "changelog": "【v1.0.1】新增封面图同步下载；修复音视频合并失败问题；优化 Cookie 登录态检测逻辑",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "api.bilibili.com",
+                "www.bilibili.com",
+                "b23.tv",
+                "*.bilivideo.com",
+                "*.hdslb.com"
+              ],
+              "methods": [
+                "GET",
+                "POST"
+              ]
+            },
+            {
+              "capability": "download.enqueue",
+              "formats": [
+                "mp4",
+                "m4s",
+                "flv"
+              ]
+            },
+            {
+              "capability": "media.merge"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/bilibili-downloader-v1.0.1.zip",
+              "size": 55599,
+              "sha256": "1871699ec63d48895466e838241917bb6ab167d1bcd3560fd0e684e8b9287fca",
+              "signature": "4CtOzkNr4itlw9BqN8iqWpLtQtrycIfEMd3vstgdcx14uSo0gp+QeA+nfrby9dooACoOIRRKkfhGaQGDXgMXBA=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T09:43:37.507Z",
+          "changelog": "【v1.0.0】B站视频下载器首次发布；支持 BV/AV 号解析；最高 1080P 画质；音视频自动合并（FFmpeg）；支持 Cookie 登录解锁大会员内容",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "api.bilibili.com",
+                "www.bilibili.com",
+                "b23.tv",
+                "*.bilivideo.com",
+                "*.hdslb.com"
+              ],
+              "methods": [
+                "GET",
+                "POST"
+              ]
+            },
+            {
+              "capability": "download.enqueue",
+              "formats": [
+                "mp4",
+                "m4s",
+                "flv"
+              ]
+            },
+            {
+              "capability": "media.merge"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/bilibili-downloader-v1.0.0.zip",
+              "size": 55634,
+              "sha256": "9daefb495f2646357526dc714318ec7e5d3a8f53d4ccb93588809a3f98a9386c",
+              "signature": "b7acTXQIqKC/kkOl6stYf+w4XvTV0JX6nnJPuvXkFBxtGtKvn5XcHrqZeu84BgnXYwQM4UeortkXp0pmUHi3DQ=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "markdown-editor",
+      "publisher": "doujiao-official",
+      "name": "Markdown 编辑器",
+      "description": "高效双栏 Markdown 写作与预览，支持多层级子目录新建与分类管理、本地时间轴快照、Git 版本控制与 Diff 对照、自定义另存为路径与默认保存目录配置",
+      "icon": "📝",
+      "releases": [
+        {
+          "version": "1.3.3",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T06:53:29.140Z",
+          "changelog": "【v1.3.3】新增删除 Markdown 文档防误触二次确认提示，明确显示待删除文档标题与文件名，防止意外误删文件",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.3.3.zip",
+              "size": 66136,
+              "sha256": "71b887eda8916a26b9647122f8d3f853607eccb1cfaa7055f0e3e5b3f18d44a6",
+              "signature": "u2arXrWHQJu3eCbrDQ2abaZAIwAV1vfgloqEkU9n8TpkaInRXqq7DtjHzo7PKrCAkcryy01wsHxWVecLGM1yBA=="
+            }
+          ]
+        },
+        {
+          "version": "1.3.2",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T06:17:16.541Z",
+          "changelog": "【v1.3.2】新增工作目录下任意新建子目录与文档归类功能；支持多级子文件夹层级浏览与面包屑导航；优化空目录展示与新建交互；修复子目录下文档删除与文件同步问题",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.3.2.zip",
+              "size": 66152,
+              "sha256": "dc8e444118b12f806343506462f821602940e7c6a5e51449449f876200b6421d",
+              "signature": "YZkWZXmH8P5REOc42H9/8irfBrIxKID+TIvNl8vga0UOlPyCAmkEJWmYy0QXNs6KSqGAqYIyw+oAvuOirce2BA=="
+            }
+          ]
+        },
+        {
+          "version": "1.3.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T04:47:06.773Z",
+          "changelog": "【v1.3.1】工具栏重构优化，视图切换胶囊更紧凑；分组工具按钮防止换行；快照频率优化（5 分钟智能合并）；修复工具栏布局在小窗口溢出问题",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.3.1.zip",
+              "size": 65824,
+              "sha256": "d4f0fa9a46d0384c4ac623bd88f27f91905cf49c784f6f534c633f89f7132906",
+              "signature": "9PTQcag3kYrdXXf6FhgAiJgsQHnvH3kkf2QJfXqGgJkAxHb3J5t7BIoALPddxqIjCeA7bLqO05RpUWsUk6tJDQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.3.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T02:51:10.113Z",
+          "changelog": "【v1.3.0】新增文件版本控制（本地历史快照）：自动快照 + 里程碑快照 + 一键恢复 + Diff 对比；新增 Git 版本控制集成（提交/日志/回滚）；快照存储上限 100 条",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.3.0.zip",
+              "size": 64520,
+              "sha256": "06ea8b65920df0e834f6a1e123ca6417a0e02878773c506c3497f2bed04e7ad0",
+              "signature": "MUX/KJ0v1DWgkuzp84M6PLBAZTI8gYBZlucEjuFcmNtXqK39oXJvtGHIlLDub2LXG67HMbgQgpoaqDIwg731DA=="
+            }
+          ]
+        },
+        {
+          "version": "1.2.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T02:12:25.977Z",
+          "changelog": "【v1.2.0】新增「另存为」功能；新增工作目录管理（选择/重置/打开所在文件夹）；存储模式升级为独立磁盘文件同步，支持 .md/.markdown 格式",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.2.0.zip",
+              "size": 60199,
+              "sha256": "4b579b275bf1cb93ef46b92c9a69e846ca4afec01b0e777d61ffeaa5e8ce3167",
+              "signature": "MsT+lGxkPO3EB8P9weFe1ZvX8z+LqDpWbSOfFAdGWXPwSNwsi7oaV+ZJcPOZdPWYBqI6BbDg481k1Np+MqHzCQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.1.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T16:18:18.889Z",
+          "changelog": "【v1.1.0】新增文档列表侧边栏（支持折叠/展开）；编辑/预览/分屏三模式切换；实时 Markdown 渲染（代码高亮/表格/数学公式）；图片粘贴与拖拽插入",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.1.0.zip",
+              "size": 58812,
+              "sha256": "930445e747bc243e6fcb0524e8655c16573c855f431993dc348080522a6026b7",
+              "signature": "NdyqBfUty17GVAvcnisXmXhRlxNG/xQzV703lUkCHj2OyTtKHCGMJLQ/hVIb2+DhVZ+g83LU8lbuuWglInUJBw=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T15:24:57.892Z",
+          "changelog": "【v1.0.0】Markdown 编辑器首次发布；支持实时预览与语法高亮；多文档管理；导入本地 .md 文件；自动保存",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.0.0.zip",
+              "size": 57242,
+              "sha256": "9f2db55b50b86bc6c9a25b7a172533d286c3db1e1ee7c2a264d570f40b0da2d9",
+              "signature": "ToLvq39GXPgmpHn01sF06cAeZkS5zeAbrqAFq2ekJ6/JIQM5sedarEUaf4jvxnJUO9T7AXYahcT9swC9ggHrCg=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "notepad",
+      "publisher": "doujiao-official",
+      "name": "轻便记事本",
+      "description": "零负担极速纯文本随手记，支持文件级密码强加密保护、多层级子目录新建与分类管理、本地时间轴快照、Git 版本控制与 Diff 对照、自定义另存为路径与默认保存目录配置",
+      "icon": "🗒️",
+      "releases": [
+        {
+          "version": "1.4.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T10:58:58.502Z",
+          "changelog": "【v1.4.0】新增便签密码访问与加密保护功能：支持对指定敏感便签开启 AES-256-GCM 硬件级强加密，密文安全落盘，列表防窥遮蔽，支持密码修改与一键解除加密",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.4.0.zip",
+              "size": 68918,
+              "sha256": "f9ab5429e90296ee6b2026005c67d8a6944ca4e70c9b520c48e625a029350597",
+              "signature": "KZm5o1mmdsVZH1psmuevDeaMZxzCd4dsb2qNtLBm6uz811jgCkeLAdFxO+nEWk1Es5FzMzaFXSGRRmuLH7njAQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.3.3",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T06:53:02.230Z",
+          "changelog": "【v1.3.3】新增删除便签防误触二次确认提示，明确显示待删除便签标题与文件名，防止意外误删文件",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.3.3.zip",
+              "size": 63202,
+              "sha256": "bf0941ae19a270cc57d28a51b396485c1cf05f757f386dd6822ce0391331e01e",
+              "signature": "Tk0T/JzNYJWWYuNRGj1N8f9A+ydCy26y4uwlnuccWSZ8zkJPR3Cg//gKpTFZcmxZ2UkJmDXzZSLCJEzGnnGgAQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.3.2",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T06:17:11.798Z",
+          "changelog": "【v1.3.2】新增工作目录下任意新建子目录与分类整理功能；支持多级子文件夹层级浏览与面包屑导航；优化空目录展示与新建交互；修复子目录下便签删除与文件同步问题",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.3.2.zip",
+              "size": 63190,
+              "sha256": "d64235b9ddd5c2951e61283cb71da2ffe3d9e5b38e5a3cb00ce2e4c2f333efb8",
+              "signature": "svQSv1UBZ0R7tYtTvphn7FmvQ6NNQWTKBtQPvlF1sXix+DaSosGNlGu9j8Yj3SDt6WmRuTWhajoLHHou9epnCQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.3.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T04:47:06.571Z",
+          "changelog": "【v1.3.1】工具栏全面整理重构，分组排列更清晰；新增版本历史 Tooltip 预览；5 分钟智能合并快照，大幅降低存储占用；修复工具栏换行抖动问题",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.3.1.zip",
+              "size": 63046,
+              "sha256": "f9af677df94b9b8c3a08c55720bb2bbbf44877cb24deeee2b10dcdc60ace47ac",
+              "signature": "MggNqOjj2bJaXgEUHH4HFl8sen8VyJp2jdtVTBZYM4i7KQNr7yw4ZSRG6g6NmDajZ/WQ9YYVv2TB6PM2aHfqAw=="
+            }
+          ]
+        },
+        {
+          "version": "1.3.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T02:51:13.500Z",
+          "changelog": "【v1.3.0】新增文件版本控制（本地历史快照）：自动记录编辑历史、支持按时间点一键恢复、支持与当前内容对比 Diff；新增 Git 深度集成（版本提交/日志/回滚）",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.3.0.zip",
+              "size": 61610,
+              "sha256": "a8bdbad2b613d38f6de5f133142c9ddc4ea3862cfe5d3050ede128434be99f49",
+              "signature": "gZZv2h/LYI/Y7DNlohzYW7+4PPWgDSNKejPLPbLTJs7h3a+cUznUKwrCDkZsLcD15vGmFQAKzP9J8+oPkmvECQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.2.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T02:12:14.779Z",
+          "changelog": "【v1.2.0】新增「另存为」功能，支持保存到任意本地路径；新增工作目录管理（更改/重置/在文件管理器中打开）；存储架构升级为独立文件模式，卸载应用不丢失便签",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.2.0.zip",
+              "size": 57412,
+              "sha256": "61ed6b7a956df73dc835dc237670955f2eb34a2ef4df13a5a89091c425db7c8c",
+              "signature": "dn7pOp6WIi6Gwu41KvqQSttgierye4GTEMJFy1KDk/uFuVrWwiYGbEmK+p1FeA94PwtcHOPPQYmTEfw5uDXHDA=="
+            }
+          ]
+        },
+        {
+          "version": "1.1.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T16:18:18.903Z",
+          "changelog": "【v1.1.0】新增便签置顶功能（📌）；便签列表支持关键词实时搜索；新增字数/行数实时统计；优化自动保存策略",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.1.0.zip",
+              "size": 56116,
+              "sha256": "31b7c40ede8333b062f8a883cc6b9f3e4db4f66d30d3f1e37182125d1867e557",
+              "signature": "Tf0RTmu3VOGn5azUjThcgXE1pT2DIxRB866yOYyZu0s1ezsRISM2KlCNpbSg+9IFObPhCxsJuea3rn86Zf8gAw=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T11:02:50.815Z",
+          "changelog": "【v1.0.0】便签插件首次发布；支持多便签管理、实时富文本编辑、自动持久化存储；字号/字体/粗体/斜体/颜色等样式控制；置顶悬浮窗口模式",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.0.0.zip",
+              "size": 54414,
+              "sha256": "f2532e8e671945b8ee67eead48b58fb47a17a38afa158019461bbb9a50be51c9",
+              "signature": "a6WxI6WSURkNCkTVmxpIOllKtpVLHdikNUWk88vnDoBoB1MwRGN7SwqYBqW18lsHn/CQi6L4J66Mfo+u5GOmCQ=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "clipboard-history",
+      "publisher": "doujiao-official",
+      "name": "剪贴板历史记录",
+      "description": "系统剪贴板实时监听、文本与图片历史记录持久化、一键回写复制、常用置顶与快捷检索",
+      "icon": "📋",
+      "releases": [
+        {
+          "version": "1.0.2",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T00:42:33.615Z",
+          "changelog": "【v1.0.2】新增图片剪贴板历史支持（缩略图预览）；修复超长文本导致 UI 崩溃的问题；优化历史记录分页加载性能",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "clipboard.history"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/clipboard-history-v1.0.2.zip",
+              "size": 54778,
+              "sha256": "65b675395218c8643c247043622d56f644259e276e15fa8d92ba37f31ea13d92",
+              "signature": "zYD4lPve7BIU7mJQ3WGudi3nfnny59FwI1o1bXRSjGGu0fY1SN5yS5jUqrUucmFF4wSVWttn6E72/J1dMpujCA=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T16:18:18.834Z",
+          "changelog": "【v1.0.1】新增内容置顶功能；支持关键词搜索历史记录；修复重复内容去重逻辑",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "clipboard.history"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/clipboard-history-v1.0.1.zip",
+              "size": 54173,
+              "sha256": "51c96a4135ae9143dff718a2524864dba20f0669c535ff925688abed1948ddd6",
+              "signature": "phqYjZ4dpazQBEaKjLX3KzJMlDOVdXYcvgJGRLyRLKkqnp3S09iN82LPZWGXVAANDQfXlu9eI/JmWlwsmBPUBQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T15:24:57.903Z",
+          "changelog": "【v1.0.0】剪贴板历史插件首次发布；支持实时监听剪贴板变化、历史记录管理、一键复制回写、最大保存 200 条记录",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "clipboard.history"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/clipboard-history-v1.0.0.zip",
+              "size": 54085,
+              "sha256": "220e2c8d3df7704b41e4bddfe7a4255bafcd9ed03ff89d70af6d87d324e3b142",
+              "signature": "bIjJQT2ySvX784jXWEoHJW/jOz4NgdQl8FyKWgdWeCcR+mAziUWuM+wamGhwckJBHmjLfQc0tXA/kLWh1+0dAQ=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "browser",
+      "publisher": "doujiao-official",
+      "name": "内置极速浏览器",
+      "description": "基于独立会话的多标签极速浏览器，支持智能搜索寻址、书签收藏、导航控制及存储隔离",
+      "icon": "🌐",
+      "releases": [
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T15:24:57.916Z",
+          "changelog": "【v1.0.0】内置浏览器首次发布；基于 Electron 独立 WebContents 渲染，与插件沙箱完全隔离；支持多标签切换、书签收藏、导航栏与智能搜索寻址（支持百度/必应/谷歌）",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "*"
+              ]
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/browser-v1.0.0.zip",
+              "size": 54515,
+              "sha256": "6ec09723f422e073bc8cdb47755349ea16231ba2575e478c447d8b97ddeaba18",
+              "signature": "ZQS45ZkrivtKUyqI5U2DEFvGaqSKJozXDoMao8Yc/JIIlP0CNhJXcjNFSyZQGU79jcsMk58LXHugtXVJ8ai8BQ=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "samba-manager",
+      "publisher": "doujiao-official",
+      "name": "Samba 文件管理",
+      "description": "专业 NAS/Samba 文件浏览器：支持自定义端口与用户配置、流式上传下载、文件浏览与目录创建、文本预览以及图片视频智能缩略图与在线流式播放",
+      "icon": "🗄️",
+      "releases": [
+        {
+          "version": "1.0.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T02:00:36.124Z",
+          "changelog": "【v1.0.1】新增视频/图片智能缩略图（FFmpeg 帧提取缓存）；新增在线流式播放（HLS 分块传输）；优化大目录列表加载性能；修复上传中断后状态未重置的问题",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "samba.client"
+            },
+            {
+              "capability": "media.merge"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/samba-manager-v1.0.1.zip",
+              "size": 62349,
+              "sha256": "98e0a2189e38e5b31fe608279cd7fe478b173bfaa9c218ad82c9846e07ec281c",
+              "signature": "m/sf8DdzVGCJNPgk/0t4QuoiAjma23M+PhhsR6fkXN4+eJ6ppjW9FckMkqzSW789eh5G4jNYDIkCdY2BeOKuBA=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T14:19:23.933Z",
+          "changelog": "【v1.0.0】Samba/NAS 文件管理插件首次发布；支持多连接配置（IP/端口/用户名/密码）、目录树浏览、文件上传下载、文件重命名/删除/创建目录、纯文本在线预览",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "samba.client"
+            },
+            {
+              "capability": "media.merge"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/samba-manager-v1.0.0.zip",
+              "size": 60612,
+              "sha256": "ba3a2ebbb94be6ea65f0d507468e96af75211ca320097df56b8dcc5b96393446",
+              "signature": "ZslGqMxyB7YzHWOAUmQWOyFdfnGOVNHsT2Ht+SZUyHK9Ed8H+tqfCQlNWJgnp0EPH30hQ301uPFbQ70cWD1aBQ=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lan-transfer",
+      "publisher": "doujiao-official",
+      "name": "局域网快传",
+      "description": "局域网跨设备文件传输助手：支持文件快速拖拽投放、电脑与手机双向互传、手机扫码秒连免装 App、局域网文本即时互传",
+      "icon": "⚡",
+      "releases": [
+        {
+          "version": "1.0.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T16:18:18.918Z",
+          "changelog": "【v1.0.1】新增局域网文本即时互传；新增 PIN 码鉴权开关，保护数据安全；优化 QR 码自动携带 PIN 码；修复多网卡环境下 IP 切换失效问题",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "lan.transfer"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/lan-transfer-v1.0.1.zip",
+              "size": 58570,
+              "sha256": "b9e59387166f7c75f02eadb70e85888b1885f40436a968bfdcabe8006c20b424",
+              "signature": "GICe/tQMUzCzftoTU5noyd0NURpzq+roo22iJkYjxY6rAYKspdCKfZVLvFVNi3SCgDF1uHqtk2TCs8FrR2cZAw=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-09T15:15:23.602Z",
+          "changelog": "【v1.0.0】局域网快传插件首次发布；支持电脑与手机双向传文件、拖拽投放、手机扫码免安装 App 直接传输；内置轻量 HTTP 服务端",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "lan.transfer"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/lan-transfer-v1.0.0.zip",
+              "size": 58389,
+              "sha256": "89bb0f6ffabd5acce382c29e1e773d8e6b51ddb764003801d4422d577859bd34",
+              "signature": "2/rnkyFVZ0X6/qQH7O7XmXGrpVD9kj2eykC9RrAre151O5wkqqbLToTO1pLmNgtkilOLm4+rgHc18JcrSPa/Dg=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "object-storage",
+      "publisher": "doujiao-official",
+      "name": "对象存储管理",
+      "description": "支持 S3 / MinIO / 阿里云 OSS / 腾讯云 COS / Cloudflare R2 等对象存储，支持目录树浏览、文件拖拽上传、预签名分享与多媒体在线预览",
+      "icon": "🪣",
+      "releases": [
+        {
+          "version": "1.0.2",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T05:54:12.227Z",
+          "changelog": "【v1.0.2】对象存储全面接入宿主主进程网络安全通道，彻底免除存储桶 CORS 跨域配置；修复中文目录创建与 SignatureDoesNotMatch 签名异常；修复图片与视频缩略图预览与首帧即时提取",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "*"
+              ],
+              "methods": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "HEAD"
+              ]
+            },
+            {
+              "capability": "download.enqueue",
+              "formats": [
+                "*"
+              ]
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/object-storage-v1.0.2.zip",
+              "size": 72502,
+              "sha256": "389d3adf6420d4480cd2c85accbee46ff714ff3b1e29a6f592aed1e134705969",
+              "signature": "N7IBmqamk175aZvwhK5ahxglGkT28Vn98EbxD3cEoJR7NniIJpJB2bEgFNhtku7fquruM3RWdBAvHrah4eY5Bw=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T05:13:18.366Z",
+          "changelog": "【v1.0.1】修复中文目录创建失败与 SignatureDoesNotMatch 签名异常；修复存储桶未配置 CORS 时上传受阻的问题（无缝降级宿主安全代理）；修复图片与视频缩略图加载失败问题；优化视频元数据加载与首帧即时提取渲染",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "*"
+              ],
+              "methods": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "HEAD"
+              ]
+            },
+            {
+              "capability": "download.enqueue",
+              "formats": [
+                "*"
+              ]
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/object-storage-v1.0.1.zip",
+              "size": 72725,
+              "sha256": "14b351aaf35e1af975f236345eb8f51500b3cc2b152ca86df82047b498d5d454",
+              "signature": "bXSwD5XkvhNWG1vCfMS0CfrbR++ELYfCd6jRJ4YnFcsr4xZ1HJGQhlhmL0Z7qQ1D8O1sac0STBonqJXTKnbLDQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T03:00:22.798Z",
+          "changelog": "【v1.0.0】对象存储管理插件首次发布；支持 S3/MinIO/阿里云 OSS/腾讯云 COS/Cloudflare R2；目录树浏览、拖拽上传、批量删除；图片/视频/音频/PDF/代码文件全类型预览；预签名分享链接生成",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "*"
+              ],
+              "methods": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "HEAD"
+              ]
+            },
+            {
+              "capability": "download.enqueue",
+              "formats": [
+                "*"
+              ]
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/object-storage-v1.0.0.zip",
+              "size": 71968,
+              "sha256": "42b52f44f6490f4fecd9883438f537a348310b0c2564a8068f872a35fe661ab2",
+              "signature": "g4AGuyM+zYsdT5VX7EQGGfPsRwxW8EVmWBarpgaXzzCyiFLOY/eOyGmz+PbEpWDOSulCiuI+7Q5hKlw2yZfVAw=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "image-editor",
+      "publisher": "doujiao-official",
+      "name": "轻量图片编辑",
+      "description": "极速轻量图片标注与涂鸦剪裁工具，支持剪贴板粘贴与拖拽导入、常用标注（矩形、圆形、箭头、自由画笔、荧光笔、序号标记、文字、隐私马赛克）、快速剪裁与翻转、一键复制到剪贴板与保存至工作目录",
+      "icon": "🖼️",
+      "releases": [
+        {
+          "version": "1.0.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T06:48:44.606Z",
+          "changelog": "【v1.0.1】新增清空当前工作区画布功能；支持在图库抽屉中一键清空工作区图片与单张图片删除管理",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            },
+            {
+              "capability": "clipboard.history"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/image-editor-v1.0.1.zip",
+              "size": 64277,
+              "sha256": "490a82a7b59ad880e4664d557a047a03de597b529539d94c401754201145bedc",
+              "signature": "vlWdQ1Q6SeK+Dld1FwuBP0FN8tPAD774sHvdx5kS9STnqkya189buDneb9SW/HXbBedlff7mwtnr8I8ubMVODQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T06:36:59.076Z",
+          "changelog": "【v1.0.0】首发上线：极速轻量截图标注与裁剪器；支持 Ctrl+V 剪贴板快速粘贴；支持矩形/圆形/智能箭头/直线/自由画笔/荧光笔/步骤序号气泡/文字标注/隐私马赛克；支持交互式裁剪与旋转翻转；支持 Ctrl+C 一键复制到剪贴板与工作区快速保存",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            },
+            {
+              "capability": "clipboard.history"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/image-editor-v1.0.0.zip",
+              "size": 63594,
+              "sha256": "c94178bc3bbf05021826b2fbfa880e3e069c41e47f085f6acd741a54655c2030",
+              "signature": "5G5HlEXA+Q0yuIDxu5Xc1sCBW1hKyQ0Y/eBhdGjWlGz20xC7iK/maZDiPH6pMGCgASwxq+obVEz7UOlivahyCg=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "time-album",
+      "publisher": "doujiao-official",
+      "name": "时光相册",
+      "description": "本地与云端双模时光相册与摄影画廊，支持直连 AWS S3、私有 MinIO、阿里云 OSS、腾讯云 COS、Cloudflare R2 等对象存储（无需本地虚拟磁盘挂载），支持多源相册切换、全景时间轴瀑布流、人物分类相册与命名打标、端侧离线深度人脸识别与一键全自动人脸聚类、那年今日回忆唤醒、EXIF 摄影参数解析与时光放映机幻灯片",
+      "icon": "📸",
+      "releases": [
+        {
+          "version": "1.3.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T10:24:07.446Z",
+          "changelog": "【v1.3.0】重磅升级：全面支持直连 S3 / MinIO / OSS / COS / R2 等对象存储！支持指定 Bucket 与前缀子目录，无需借助 Rclone 或 S3FS 挂载本地虚拟磁盘；基于 AWS4-HMAC-SHA256 签名协议直连，支持防盗链临时 Presigned URL 与本地 IndexedDB 320px 缩略图极速缓存；全功能适配时间轴、相片全屏预览、时光放映机幻灯片与端侧深度人脸聚类。",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            },
+            {
+              "capability": "network.request",
+              "hosts": [
+                "*"
+              ]
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/time-album-v1.3.0.zip",
+              "size": 435218,
+              "sha256": "4e61cbd48d764379d33cc3f6708186d770b55c8c6259ef025e841acf46150789",
+              "signature": "tcCgx0HovsgliZYqCpx+3X45NZxofW7BIGImDAsG8NheMFkuDbtDJmqMzGj5cDU2MrVt2nwby9I/UGJo72Q5Bw=="
+            }
+          ]
+        },
+        {
+          "version": "1.2.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T08:10:32.478Z",
+          "changelog": "【v1.2.0】重磅升级：全面接入端侧离线深度人脸识别模型（TinyFaceDetector + 68点定位 + 128维特征向量提取）；支持按需离线模型下载管理（约 6.6MB，持久保存在本地 IndexedDB，100% 离线隐私不泄露）；支持一键全自动人脸聚类与智能人物相册生成；支持模型缓存一键清除释放空间。",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            },
+            {
+              "capability": "network.request",
+              "hosts": [
+                "*"
+              ]
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/time-album-v1.2.0.zip",
+              "size": 412810,
+              "sha256": "b70d1a1972b21971c9a36fca51e94c4b36a7f938d0bb685da24cad4ae58d5c86",
+              "signature": "eegaoFqdmTQHRCIJGEZZ65zsjp6gfDg7MkGFAHLaZP8RQKKpkQ6L3k/JwDJGQw6K0g2AINjQRsMEuGD8E8ZLCQ=="
+            }
+          ]
+        },
+        {
+          "version": "1.1.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T07:39:35.166Z",
+          "changelog": "【v1.1.0】重磅升级：新增人物分类与专属相册管理，支持人物命名、照片关联与封面头像设置；新增自定义照片标签与直观标签筛选栏；修复与强化本地端侧 AI 像素色彩与人像肤色检测分析，支持一键智能人像发现与即时检索反馈。",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/time-album-v1.1.0.zip",
+              "size": 69271,
+              "sha256": "a5dd0fedf7f3c6e38dc1e7f45f6578f8026e0850948ab561673f8b9af8e3b72b",
+              "signature": "W7CpY6W9S2+0niUQswg5Ggo16VvR2noVyxlgDIJc+tuV3+vQDB7JtouX+qoY2EsH4S+3p4Hp/6BTR8iXNs+BBw=="
+            }
+          ]
+        },
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-10T07:16:22.125Z",
+          "changelog": "【v1.0.0】首发上线：专为桌面端设计的本地隐私时光相册；支持全景时间轴瀑布流、那年今日回忆唤醒卡片、EXIF 摄影参数解析、时光胶卷幻灯片放映与端侧离线 AI 识图扩展",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/time-album-v1.0.0.zip",
+              "size": 61707,
+              "sha256": "c0d2d86754051df7f1c38f6b0cc474fc6ad4a1e1d55a6ad6d9a288fe2625f48a",
+              "signature": "DE/09OfBhBh1e0aosRMpc1UtQUNPDiDAp3JJO8HlhJmiH26uoEsLogyx+3fQoh8SJeJzhJrRSofqIFlqZJa4Dw=="
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

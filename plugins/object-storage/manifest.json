@@ -1,0 +1,28 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "object-storage",
+  "publisher": "doujiao-official",
+  "name": "对象存储管理",
+  "version": "1.0.2",
+  "changelog": "【v1.0.2】对象存储全面接入宿主主进程网络安全通道，彻底免除存储桶 CORS 跨域配置；修复中文目录创建与 SignatureDoesNotMatch 签名异常；修复图片与视频缩略图预览与首帧即时提取",
+  "description": "支持 S3 / MinIO / 阿里云 OSS / 腾讯云 COS / Cloudflare R2 等对象存储，支持目录树浏览、文件拖拽上传、预签名分享与多媒体在线预览",
+  "icon": "🪣",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "network.request",
+      "hosts": ["*"],
+      "methods": ["GET", "POST", "PUT", "DELETE", "HEAD"]
+    },
+    {
+      "capability": "download.enqueue",
+      "formats": ["*"]
+    }
+  ]
+}
