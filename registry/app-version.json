@@ -1,0 +1,12 @@
+{
+  "version": "0.2.1",
+  "releaseDate": "2026-09-10",
+  "productName": "豆角工具箱",
+  "changelog": "1. 增加主程序手动检查更新与开机自动检查更新功能\n2. 记事本与 Markdown 编辑器全面支持自定义文件保存地址（另存为）与默认存储目录设置\n3. 主程序设置中心增加统一文件存储与工作空间管理面板\n4. Samba 文件管理插件支持视频智能缩略图与在线流式播放",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v0.2.1/豆角工具箱-Setup-0.2.1.exe",
+  "fallbackUrls": [
+    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v0.2.1/豆角工具箱-Setup-0.2.1.exe"
+  ],
+  "size": 84666574,
+  "sha256": "d40a43996d0a36079812087632e2acc2caa35f3161cdc09e2f0b7c7c5d1a361d"
+}

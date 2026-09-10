@@ -1,0 +1,20 @@
+{
+  "name": "doujiao-monorepo",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/host",
+    "build:sdk": "npm run build -w packages/plugin-sdk --if-present",
+    "build:plugins": "npm run build -w plugins/douyin && npm run build -w plugins/bilibili && npm run build -w plugins/markdown-editor && npm run build -w plugins/notepad && npm run build -w plugins/clipboard-history && npm run build -w plugins/browser && npm run build -w plugins/samba-manager && npm run build -w plugins/lan-transfer && npm run build -w plugins/object-storage",
+    "build:host": "npm run build -w apps/host",
+    "package:win": "npm run build:win -w apps/host",
+    "create-plugin": "node scripts/create-plugin.cjs",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "browser",
+  "publisher": "doujiao-official",
+  "name": "内置极速浏览器",
+  "version": "1.0.0",
+  "description": "基于独立会话的多标签极速浏览器，支持智能搜索寻址、书签收藏、导航控制及存储隔离",
+  "icon": "🌐",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "network.request",
+      "hosts": ["*"]
+    }
+  ]
+}
