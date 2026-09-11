@@ -157,11 +157,27 @@ button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
 /* ==========================================================================
    Vditor 编辑即预览（Typora 风格）深度主题融合
    ========================================================================== */
+
+/* 外层宿主容器：必须 flex 列布局才能让 Vditor 100% 撑满 */
+[data-vditor-host] {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Vditor 根容器 */
 .vditor {
   border: none !important;
   border-radius: 0 !important;
   background-color: transparent !important;
+  width: 100% !important;
   height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
 }
 
 .vditor--dark {
@@ -169,11 +185,22 @@ button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
   color: #f1f5f9 !important;
 }
 
+/* 内容区：必须 flex:1 才能撑开剩余高度 */
+.vditor-content {
+  background-color: transparent !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
 .vditor-toolbar {
   background-color: rgba(15, 23, 42, 0.75) !important;
   border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;
   padding: 4px 12px !important;
   backdrop-filter: blur(8px);
+  flex-shrink: 0 !important;
+  width: 100% !important;
 }
 
 .vditor-toolbar__item {
@@ -191,14 +218,18 @@ button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
   background-color: rgba(99, 102, 241, 0.15) !important;
 }
 
-.vditor-content {
-  background-color: transparent !important;
-}
-
 .vditor-ir,
 .vditor-wysiwyg,
 .vditor-sv {
   background-color: transparent !important;
+  width: 100% !important;
+  min-height: 0 !important;
+}
+
+/* 分屏双栏容器 */
+.vditor-sv__editor,
+.vditor-sv__preview {
+  min-height: 0 !important;
 }
 
 .vditor-reset {
@@ -206,6 +237,8 @@ button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
   line-height: 1.8 !important;
   color: inherit !important;
   padding: 24px 32px !important;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .vditor-reset h1,

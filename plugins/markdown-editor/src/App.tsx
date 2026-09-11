@@ -402,7 +402,7 @@ export default function App(): JSX.Element {
       mode: targetMode,
       cdn: './vditor',
       theme: isLight ? 'classic' : 'dark',
-      height: '100%',
+      minHeight: 200,
       placeholder: '在此输入 Markdown 内容，享受即时渲染沉浸式写作...',
       preview: {
         theme: {
@@ -1025,7 +1025,8 @@ export default function App(): JSX.Element {
               {/* Vditor 容器（即时渲染 / 所见即所得 / 双栏分屏） */}
               <div
                 ref={vditorContainerRef}
-                className={`w-full h-full ${viewMode === 'preview' ? 'hidden' : 'block'}`}
+                data-vditor-host
+                className={`flex-1 min-h-0 min-w-0 overflow-hidden ${viewMode === 'preview' ? 'hidden' : 'flex flex-col'}`}
               />
 
               {/* 纯预览模式 */}
