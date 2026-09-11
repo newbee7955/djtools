@@ -3,6 +3,7 @@
   "version": "0.4.0",
   "description": "豆角工具箱 - 极简模块化多功能桌面工具箱",
   "author": "Doujiao Team",
+  "license": "Apache-2.0",
   "main": "./out/main/index.js",
   "private": true,
   "type": "module",
