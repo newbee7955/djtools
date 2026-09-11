@@ -59,13 +59,15 @@ export default function App(): JSX.Element {
   })
 
   const [activeDocId, setActiveDocId] = useState<string>(() => docs[0]?.id || 'welcome-doc')
-  const [viewMode, setViewMode] = useState<'ir' | 'wysiwyg' | 'sv' | 'preview'>(() => {
+  const [viewMode, setViewMode] = useState<'ir' | 'sv' | 'preview'>(() => {
     try {
       const saved = localStorage.getItem('doujiao_markdown_view_mode')
-      if (saved === 'ir' || saved === 'wysiwyg' || saved === 'sv' || saved === 'preview') return saved
+      if (saved === 'ir' || saved === 'sv' || saved === 'preview') return saved
+      // 兼容旧版 wysiwyg → ir
     } catch {}
     return 'ir'
   })
+  const [isVditorReady, setIsVditorReady] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
   const [workspaceDir, setWorkspaceDir] = useState<string>('')
@@ -405,9 +407,10 @@ export default function App(): JSX.Element {
     if (!activeDoc) return
 
     const isLight = document.documentElement.getAttribute('data-theme') === 'light'
-    const targetMode = viewMode === 'wysiwyg' ? 'wysiwyg' : viewMode === 'sv' ? 'sv' : 'ir'
+    const targetMode = viewMode === 'sv' ? 'sv' : 'ir'
 
     isVditorReadyRef.current = false
+    setIsVditorReady(false)
     const vditor = new Vditor(vditorContainerRef.current, {
       value: activeDocRef.current?.content || '',
       mode: targetMode,
@@ -467,6 +470,7 @@ export default function App(): JSX.Element {
       after() {
         vditorRef.current = vditor
         isVditorReadyRef.current = true
+        setIsVditorReady(true)
         if (activeDocRef.current && vditor.getValue() !== activeDocRef.current.content) {
           vditor.setValue(activeDocRef.current.content)
         }
@@ -1159,34 +1163,25 @@ export default function App(): JSX.Element {
                   className={`px-2.5 py-1 rounded text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
                     viewMode === 'ir' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
                   }`}
-                  title="即时渲染模式：Typora 风格编辑即预览，光标处展示源码，离开光标即时渲染"
+                  title="即时渲染模式（Typora 风格）：光标所在行展示源码，离开后即时渲染为富文本"
                 >
-                  ⚡ 编辑即预览
-                </button>
-                <button
-                  onClick={() => setViewMode('wysiwyg')}
-                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
-                    viewMode === 'wysiwyg' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="所见即所得富文本模式"
-                >
-                  📝 所见即所得
+                  ⚡ 即时渲染
                 </button>
                 <button
                   onClick={() => setViewMode('sv')}
                   className={`px-2.5 py-1 rounded text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
                     viewMode === 'sv' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
                   }`}
-                  title="分屏双栏模式：左侧源码，右侧实时渲染"
+                  title="分屏双栏模式：左侧编辑 Markdown 源码，右侧实时同步渲染预览"
                 >
-                  🌗 双栏
+                  🌗 分屏双栏
                 </button>
                 <button
                   onClick={() => setViewMode('preview')}
                   className={`px-2.5 py-1 rounded text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
                     viewMode === 'preview' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
                   }`}
-                  title="纯净阅读预览模式"
+                  title="纯净阅读预览模式：隐藏所有编辑工具，沉浸阅读"
                 >
                   👁️ 纯预览
                 </button>
@@ -1235,12 +1230,25 @@ export default function App(): JSX.Element {
 
             {/* 编辑与预览核心工作区 */}
             <div className="flex-1 flex overflow-hidden relative">
-              {/* Vditor 容器（即时渲染 / 所见即所得 / 双栏分屏） */}
-              <div
-                ref={vditorContainerRef}
-                data-vditor-host
-                className={`flex-1 min-h-0 min-w-0 overflow-hidden ${viewMode === 'preview' ? 'hidden' : 'flex flex-col'}`}
-              />
+              {/* Vditor 容器（即时渲染 / 双栏分屏） */}
+              <div className={`flex-1 min-h-0 min-w-0 overflow-hidden relative ${viewMode === 'preview' ? 'hidden' : 'flex flex-col'}`}>
+                <div
+                  ref={vditorContainerRef}
+                  data-vditor-host
+                  className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col"
+                />
+                {/* 初始化 Loading 骨架屏 */}
+                {!isVditorReady && viewMode !== 'preview' && (
+                  <div className="absolute inset-0 bg-slate-900 flex flex-col gap-4 p-8 z-10 pointer-events-none">
+                    <div className="h-4 w-1/3 rounded bg-slate-800 animate-pulse" />
+                    <div className="h-3 w-2/3 rounded bg-slate-800/70 animate-pulse" />
+                    <div className="h-3 w-1/2 rounded bg-slate-800/70 animate-pulse" />
+                    <div className="h-3 w-3/4 rounded bg-slate-800/50 animate-pulse" />
+                    <div className="mt-2 h-3 w-full rounded bg-slate-800/40 animate-pulse" />
+                    <div className="h-3 w-5/6 rounded bg-slate-800/40 animate-pulse" />
+                  </div>
+                )}
+              </div>
 
               {/* 纯预览模式 */}
               {viewMode === 'preview' && (

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "registryVersion": 91,
-  "updatedAt": "2026-09-11T09:34:01.608Z",
+  "registryVersion": 92,
+  "updatedAt": "2026-09-11T10:24:32.487Z",
   "plugins": [
     {
       "id": "douyin-downloader",
@@ -254,7 +254,7 @@
         {
           "version": "1.4.0",
           "channel": "stable",
-          "publishedAt": "2026-09-11T09:34:01.608Z",
+          "publishedAt": "2026-09-11T10:24:32.488Z",
           "changelog": "【v1.4.0】重大升级：集成 Vditor 所见即所得编辑内核，全面支持 Typora 级「编辑即预览」即时渲染模式与所见即所得，支持本地完全离线毫秒级冷启动",
           "engines": {
             "doujiao": ">=0.2.0",
@@ -270,9 +270,9 @@
               "platform": "any",
               "arch": "any",
               "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.4.0.zip",
-              "size": 6134929,
-              "sha256": "4f8e8e3004fc2ca831e12006a01d83787664e1036072b3d93762ccc7615fc0d0",
-              "signature": "Vg6b6Xf5bXN0HXupVVmMQLsLxpSrJOAUUvXz/qDoqUowKDHqAR0J9RT2mKgYqzsEItfiuaXKdU8zR4ZcUa9mAA=="
+              "size": 6135143,
+              "sha256": "f6860e30e6d61b6fbcc2f873b18b74075401221c3ad044cc4639110eaf20588e",
+              "signature": "5GScL08gmkdZDjhevFeXADrh3LRUXJumqoEZSx9JOjupt0FYnQuNVqVUkdxgwYsdjY5N3c2+kdH/Jm43o/lWBw=="
             }
           ]
         },
