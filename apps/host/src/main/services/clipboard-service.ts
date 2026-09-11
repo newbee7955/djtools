@@ -104,7 +104,34 @@ export class ClipboardHistoryService extends EventEmitter {
     }
   }
 
-  private startWatching(): void {
+  public isPluginEnabled(): boolean {
+    try {
+      const stateFile = join(app.getPath('userData'), 'plugins', 'clipboard-history', 'state.json')
+      if (existsSync(stateFile)) {
+        const raw = readFileSync(stateFile, 'utf-8')
+        const state = JSON.parse(raw.replace(/^\uFEFF/, ''))
+        if (state && state.enabled === false) {
+          return false
+        }
+      }
+      return true
+    } catch {
+      return true
+    }
+  }
+
+  public isWatching(): boolean {
+    return this.timer !== null
+  }
+
+  public startWatching(): void {
+    if (this.timer) return
+    if (!this.isPluginEnabled()) {
+      console.log('[ClipboardService] 剪贴板历史插件处于禁用状态，跳过启动监听器')
+      return
+    }
+
+    console.log('[ClipboardService] 启动剪贴板轮询监听器 (800ms)')
     // 初始化同步一次系统当前剪贴板
     try {
       const img = clipboard.readImage()
@@ -125,7 +152,19 @@ export class ClipboardHistoryService extends EventEmitter {
     }, 800)
   }
 
+  public stopWatching(): void {
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+      console.log('[ClipboardService] 剪贴板插件已禁用，彻底停止后台剪贴板轮询监听')
+    }
+  }
+
   private checkClipboard(): void {
+    if (!this.isPluginEnabled()) {
+      this.stopWatching()
+      return
+    }
     // 1. 优先检查图片
     try {
       const img = clipboard.readImage()

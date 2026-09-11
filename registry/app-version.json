@@ -1,12 +1,12 @@
 {
-  "version": "0.3.0",
+  "version": "0.4.0",
   "releaseDate": "2026-09-11",
   "productName": "豆角工具箱",
-  "changelog": "1. 全新集成「时光相册 (Time Album)」：端侧边缘 AI 人脸检测与聚类分组、EXIF 拍摄时光轴画廊、「那年今日」历史横幅与沉浸式幻灯片播放\n2. 全新集成「图片编辑器 (Image Editor)」：自由与预设比例裁剪、几何旋转镜像、滤镜色彩微调与无损高清画板导出\n3. 轻便记事本 (Notepad v1.4.0) 重大安全升级：AES-256 全局主密码强加密、切出防窥自动加密上锁、删除加锁文件密码二次验证与层级子目录归档\n4. 宿主全主题自适应引擎重构：新增深度穿透技术 (LIGHT_THEME_CSS)，插件界面完美自动融入亮色与暗色模式\n5. Markdown 编辑器支持层级子目录与版本时间轴快照，全面强化物理文件存储可靠性",
-  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v0.3.0/djtools-Setup-0.3.0.exe",
+  "changelog": "1. Markdown 编辑器 (v1.4.0) 升级：全新即时渲染（Typora 风格）模式，右键上下文菜单支持表格行列自由增删及语义定位，精简三态视图模式，内置初始化加载骨架屏与亮暗主题自适应\n2. 全新集成「开发利器 (DevToys v1.0.0)」：JSON/YAML 双向转换与格式化、Base64/URL 编解码、哈希校验、正则测试与时间戳工具\n3. 全新集成「媒体格式转换 (Media Converter v1.0.0)」：端侧高性能音视频与图像多格式转码处理\n4. 全新集成「OCR 文字识别 (OCR Recognizer v1.0.0)」：离线本地 AI 引擎驱动，支持图片文本毫秒级精准识别与提取\n5. 轻便记事本 (Notepad v1.4.2)：强化 AES-256 加密体系、切出防窥自动上锁、分级目录管理与版本历史差异对比\n6. 剪贴板历史 (Clipboard History v1.0.3)：亮色主题高对比度样式适配，优化图片回写与标签对比度\n7. 系统底座与安装体验重构：全新高清圆角应用图标全面统一（任务栏/开始菜单/安装包），安装包自动检测关闭旧进程，增强进程防锁与升级可靠性",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v0.4.0/djtools-Setup-0.4.0.exe",
   "fallbackUrls": [
-    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v0.3.0/djtools-Setup-0.3.0.exe"
+    "https://github.com/newbee7955/djtools/releases/download/v0.4.0/%E8%B1%86%E8%A7%92%E5%B7%A5%E5%85%B7%E7%AE%B1-Setup-0.4.0.exe"
   ],
-  "size": 91356528,
-  "sha256": "244a57229099c8ad0e2eba65d8a471a3abc8cd718d1615caf13b501b147339be"
+  "size": 116390651,
+  "sha256": "cdf60e2daf85edd882efec6f76186cfcea08b4b6171c169136b5adf57e146624"
 }

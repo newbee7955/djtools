@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 实心主题高亮按钮强制纯白文字与优雅渐变 */
+button.btn-primary,
+button[class*="bg-indigo-600"],
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]),
+.bg-indigo-600:not([class*="/"]) {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(79, 70, 229, 0.4) !important;
+  box-shadow: 0 1px 3px 0 rgba(79, 70, 229, 0.3) !important;
+}
+
+button.btn-primary:hover,
+button[class*="bg-indigo-600"]:hover,
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]):hover,
+.bg-indigo-600:not([class*="/"]):hover {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%) !important;
+  box-shadow: 0 2px 6px 0 rgba(99, 102, 241, 0.4) !important;
+}
+
+button.btn-primary *,
+button[class*="bg-indigo-600"] *,
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
+.bg-indigo-600:not([class*="/"]) * {
+  color: #ffffff !important;
+}
+
+/* 亮色模式 (data-theme="light") 全局高质感浅色适配 */
+[data-theme="light"],
+[data-theme="light"] body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .theme-bg-base {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] .theme-bg-card {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .theme-bg-sidebar {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .theme-input {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .theme-input:focus {
+  border-color: #6366f1 !important;
+}
+
+/* 优雅滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

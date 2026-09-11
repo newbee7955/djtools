@@ -31,4 +31,5 @@ nsis:
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
   artifactName: "${productName}-Setup-${version}.${ext}"
+  include: build/installer.nsh
 

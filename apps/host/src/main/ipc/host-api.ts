@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow, dialog, shell } from 'electron'
 import { existsSync } from 'fs'
 import { dirname } from 'path'
 import { PluginViewContainerManager } from '../container/plugin-view'
+import { MoreMenuPopoverManager } from '../container/more-menu-popover'
 import { DownloadTaskManager } from '../tasks/download-manager'
 import { PluginManager } from '../plugins/plugin-manager'
 import { getDouyinLoginStatus, openDouyinLoginWindow } from '../auth/douyin-auth'
@@ -9,6 +10,8 @@ import { ProxyManager, NetworkProxyConfig } from '../network/proxy-manager'
 
 export function registerHostIpc(mainWindow: BrowserWindow): void {
   const containerManager = PluginViewContainerManager.getInstance()
+  const moreMenuManager = MoreMenuPopoverManager.getInstance()
+  moreMenuManager.init(mainWindow)
   const taskManager = DownloadTaskManager.getInstance()
   const pluginManager = PluginManager.getInstance()
 
@@ -33,6 +36,28 @@ export function registerHostIpc(mainWindow: BrowserWindow): void {
   // 2.2 动态同步右侧抽屉宽度 (下载管理抽屉展开/关闭适配)
   ipcMain.handle('host:view:set-right-drawer-width', async (_, width: number) => {
     containerManager.setRightDrawerWidth(width)
+    return { success: true }
+  })
+
+  // 2.2.1 动态同步左侧“更多插件”悬浮菜单宽度 (已由悬浮层接管，保持兼容)
+  ipcMain.handle('host:view:set-left-overlay-width', async (_, width: number) => {
+    containerManager.setLeftOverlayWidth(width)
+    return { success: true }
+  })
+
+  // 2.2.2 更多插件悬浮浮层控制 (不挤压 WebContentsView，真正悬浮在主视口上方)
+  ipcMain.handle('host:more-menu:show', async (_, params: any) => {
+    moreMenuManager.show(params)
+    return { success: true }
+  })
+
+  ipcMain.handle('host:more-menu:hide', async () => {
+    moreMenuManager.hide()
+    return { success: true }
+  })
+
+  ipcMain.handle('host:more-menu:schedule-hide', async (_, delayMs?: number) => {
+    moreMenuManager.scheduleHide(delayMs)
     return { success: true }
   })
 
@@ -77,6 +102,23 @@ export function registerHostIpc(mainWindow: BrowserWindow): void {
     const success = pluginManager.uninstallPlugin(pluginId)
     return { success }
   })
+
+  // 5.1 插件管理：启用 / 禁用插件
+  ipcMain.handle(
+    'host:plugins:toggle',
+    async (_, { pluginId, enabled }: { pluginId: string; enabled: boolean }) => {
+      try {
+        if (!enabled) {
+          containerManager.destroyPluginView(pluginId)
+        }
+        const res = pluginManager.togglePlugin(pluginId, enabled)
+        return res
+      } catch (err: any) {
+        console.error(`[HostApi] 切换插件状态失败 (${pluginId}):`, err)
+        return { success: false, error: err?.message || '操作失败' }
+      }
+    }
+  )
 
   // 6. 插件市场：拉取远端市场聚合清单 (支持强制刷新)
   ipcMain.handle('host:registry:fetch', async (_, forceRefresh?: boolean) => {

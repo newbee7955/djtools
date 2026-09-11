@@ -5,10 +5,12 @@ export interface HostAPI {
   hidePlugin: () => Promise<{ success: boolean }>
   setSidebarWidth?: (width: number) => Promise<{ success: boolean }>
   setRightDrawerWidth?: (width: number) => Promise<{ success: boolean }>
+  setLeftOverlayWidth?: (width: number) => Promise<{ success: boolean }>
   setTheme?: (theme: string) => Promise<{ success: boolean }>
   listPlugins: () => Promise<any[]>
   installPluginZip: () => Promise<{ success?: boolean; canceled?: boolean; pluginId?: string; version?: string; error?: string }>
   uninstallPlugin: (pluginId: string) => Promise<{ success: boolean }>
+  togglePlugin?: (pluginId: string, enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>
 
   fetchMarketPlugins: (forceRefresh?: boolean) => Promise<any>
   installMarketPlugin: (pluginId: string, version?: string) => Promise<{ success: boolean; pluginId?: string; version?: string; error?: string }>
@@ -46,6 +48,8 @@ export interface HostAPI {
   selectWorkspaceDirectory?: (defaultPath?: string) => Promise<{ canceled: boolean; directoryPath?: string }>
   resetWorkspaceDirectory?: (scope: string) => Promise<string>
   openWorkspaceDirectory?: (scope: string) => Promise<void>
+
+  onNavigate?: (callback: (tab: string) => void) => () => void
 
   minimize: () => Promise<void>
   maximize: () => Promise<void>

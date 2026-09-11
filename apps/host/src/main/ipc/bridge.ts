@@ -1,4 +1,4 @@
-import { ipcMain, net } from 'electron'
+import { ipcMain, net, shell } from 'electron'
 import { PluginViewContainerManager } from '../container/plugin-view'
 import { DownloadTaskManager } from '../tasks/download-manager'
 import {
@@ -194,6 +194,75 @@ export function registerPluginIpcBridge(): void {
       )
     }
   )
+
+  // 6.1 媒体处理：受控多媒体转码与剪辑处理 (需要 media.convert 权限)
+  ipcMain.handle('plugin:media:convert', async (event, options: any) => {
+    const pluginId = containerManager.getPluginIdByWebContentsId(event.sender.id)
+    if (!pluginId) throw new Error('[Security] 未经授权的调用来源')
+
+    const { PluginManager } = await import('../plugins/plugin-manager')
+    const plugin = PluginManager.getInstance().getPlugin(pluginId)
+    const hasPermission = plugin?.manifest?.permissions?.some(
+      (p: any) => p.capability === 'media.convert' || p.capability === 'media.merge'
+    )
+    if (!hasPermission) {
+      throw new Error(
+        `[Security] 插件 ${pluginId} 未在 manifest.json 中声明 media.convert 权限，拒绝调用`
+      )
+    }
+
+    const senderWebContents = event.sender
+    const { FFmpegManager } = await import('../media/ffmpeg-manager')
+    return await FFmpegManager.getInstance().convertMedia(options, (progress) => {
+      if (!senderWebContents.isDestroyed()) {
+        senderWebContents.send('plugin:media:progress', progress)
+      }
+    })
+  })
+
+  // 6.2 媒体处理：媒体元数据探测
+  ipcMain.handle('plugin:media:probe', async (event, filePath: string) => {
+    const pluginId = containerManager.getPluginIdByWebContentsId(event.sender.id)
+    if (!pluginId) throw new Error('[Security] 未经授权的调用来源')
+
+    const { PluginManager } = await import('../plugins/plugin-manager')
+    const plugin = PluginManager.getInstance().getPlugin(pluginId)
+    const hasPermission = plugin?.manifest?.permissions?.some(
+      (p: any) => p.capability === 'media.convert' || p.capability === 'media.merge'
+    )
+    if (!hasPermission) {
+      throw new Error(
+        `[Security] 插件 ${pluginId} 未在 manifest.json 中声明 media.convert 权限，拒绝调用`
+      )
+    }
+
+    const { FFmpegManager } = await import('../media/ffmpeg-manager')
+    return await FFmpegManager.getInstance().probeMedia(filePath)
+  })
+
+  // 6.3 媒体处理：取消转码任务
+  ipcMain.handle('plugin:media:cancel', async (event, taskId: string) => {
+    const pluginId = containerManager.getPluginIdByWebContentsId(event.sender.id)
+    if (!pluginId) throw new Error('[Security] 未经授权的调用来源')
+    const { FFmpegManager } = await import('../media/ffmpeg-manager')
+    return FFmpegManager.getInstance().cancelConvertTask(taskId)
+  })
+
+  // 6.4 媒体处理：在资源管理器中定位生成的文件
+  ipcMain.handle('plugin:media:show-in-folder', async (event, localPath: string) => {
+    const pluginId = containerManager.getPluginIdByWebContentsId(event.sender.id)
+    if (!pluginId) throw new Error('[Security] 未经授权的调用来源')
+    shell.showItemInFolder(localPath)
+    return true
+  })
+
+  // 6.5 媒体处理：调用系统默认播放器打开文件
+  ipcMain.handle('plugin:media:open-path', async (event, localPath: string) => {
+    const pluginId = containerManager.getPluginIdByWebContentsId(event.sender.id)
+    if (!pluginId) throw new Error('[Security] 未经授权的调用来源')
+    await shell.openPath(localPath)
+    return true
+  })
 
   // 7. 监听下载进度（向当前沙箱转发本插件相关的任务进度）
   taskManager.subscribe((info) => {
@@ -631,6 +700,16 @@ export function registerPluginIpcBridge(): void {
   ipcMain.handle('plugin:workspace:git:checkout', async (event, commitHash: string, relativePath: string, scope?: string) => {
     const effectiveScope = getVerifiedScope(event.sender.id, scope)
     return workspaceService.gitCheckout(effectiveScope, commitHash, relativePath)
+  })
+
+  // 15. 屏幕截图受控能力
+  ipcMain.handle('plugin:screen:capture', async (event, options?: any) => {
+    const pluginId = containerManager.getPluginIdByWebContentsId(event.sender.id)
+    if (!pluginId) {
+      throw new Error('[Security] 未经授权的调用来源：非沙箱插件容器')
+    }
+    const { ScreenshotService } = await import('../services/screenshot-service')
+    return await ScreenshotService.getInstance().capture(options)
   })
 }
 

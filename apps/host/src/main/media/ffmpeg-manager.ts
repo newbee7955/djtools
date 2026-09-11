@@ -1,10 +1,11 @@
 import { app, net } from 'electron'
 import { join, dirname } from 'path'
-import { existsSync, mkdirSync, copyFileSync, unlinkSync, createWriteStream, renameSync } from 'fs'
-import { exec, spawn } from 'child_process'
+import { existsSync, mkdirSync, copyFileSync, unlinkSync, createWriteStream, renameSync, statSync } from 'fs'
+import { exec, spawn, type ChildProcess } from 'child_process'
 import { promisify } from 'util'
 import zlib from 'zlib'
 import { once } from 'events'
+import type { FFmpegConvertOptions, FFmpegConvertProgress, MediaProbeInfo } from '@doujiao/plugin-sdk'
 
 const execAsync = promisify(exec)
 
@@ -26,6 +27,7 @@ export class FFmpegManager {
   private static instance: FFmpegManager
   private baseDir: string
   private customPath: string | null = null
+  private activeTasks = new Map<string, ChildProcess>()
 
   private constructor() {
     this.baseDir = join(
@@ -433,6 +435,301 @@ export class FFmpegManager {
       })
 
       proc.on('error', (err) => {
+        reject(new Error(`启动 FFmpeg 进程失败: ${err.message}`))
+      })
+    })
+  }
+
+  /**
+   * 取消正在执行的转码任务
+   */
+  public cancelConvertTask(taskId: string): boolean {
+    const proc = this.activeTasks.get(taskId)
+    if (proc && !proc.killed) {
+      try {
+        proc.kill('SIGTERM')
+        this.activeTasks.delete(taskId)
+        return true
+      } catch {
+        return false
+      }
+    }
+    return false
+  }
+
+  /**
+   * 快速探测媒体元数据（分辨率、时长、格式、音视频编码）
+   */
+  public async probeMedia(filePath: string): Promise<MediaProbeInfo> {
+    const status = await this.getStatus()
+    if (!status.installed || !status.path) {
+      throw new Error('未检测到 FFmpeg 独立组件，无法探测媒体信息')
+    }
+    if (!existsSync(filePath)) {
+      throw new Error(`文件不存在: ${filePath}`)
+    }
+
+    const fileSize = existsSync(filePath) ? statSync(filePath).size : 0
+
+    return new Promise((resolve) => {
+      exec(`"${status.path}" -hide_banner -i "${filePath}"`, { timeout: 10000 }, (_err, _stdout, stderr) => {
+        const out = stderr || ''
+        const result: MediaProbeInfo = {
+          size: fileSize
+        }
+
+        // 解析时长: Duration: 00:01:23.45, start: 0.000000, bitrate: 1200 kb/s
+        const durationMatch = out.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/)
+        if (durationMatch) {
+          const hours = parseFloat(durationMatch[1])
+          const minutes = parseFloat(durationMatch[2])
+          const seconds = parseFloat(durationMatch[3])
+          result.duration = hours * 3600 + minutes * 60 + seconds
+        }
+
+        // 解析码率: bitrate: 1200 kb/s
+        const bitrateMatch = out.match(/bitrate:\s*(\d+)\s*kb\/s/i)
+        if (bitrateMatch) {
+          result.bitrate = parseInt(bitrateMatch[1], 10)
+        }
+
+        // 解析视频流: Stream #0:0...: Video: h264 ..., 1920x1080 ..., 30 fps
+        const videoMatch = out.match(/Stream #\d+:\d+.*?: Video:\s*([a-zA-Z0-9_-]+)/i)
+        if (videoMatch) {
+          result.videoCodec = videoMatch[1]
+        }
+
+        const resMatch = out.match(/Video:.*?,\s*(\d{2,5})x(\d{2,5})/i)
+        if (resMatch) {
+          result.width = parseInt(resMatch[1], 10)
+          result.height = parseInt(resMatch[2], 10)
+        }
+
+        const fpsMatch = out.match(/(\d+(?:\.\d+)?)\s*fps/i)
+        if (fpsMatch) {
+          result.fps = parseFloat(fpsMatch[1])
+        }
+
+        // 解析音频流: Stream #0:1...: Audio: aac ..., 48000 Hz, stereo
+        const audioMatch = out.match(/Stream #\d+:\d+.*?: Audio:\s*([a-zA-Z0-9_-]+)/i)
+        if (audioMatch) {
+          result.audioCodec = audioMatch[1]
+        }
+
+        const rateMatch = out.match(/(\d+)\s*Hz/i)
+        if (rateMatch) {
+          result.sampleRate = parseInt(rateMatch[1], 10)
+        }
+
+        if (out.includes('stereo')) {
+          result.channels = 2
+        } else if (out.includes('mono')) {
+          result.channels = 1
+        } else if (out.includes('5.1')) {
+          result.channels = 6
+        }
+
+        resolve(result)
+      })
+    })
+  }
+
+  /**
+   * 通用多媒体格式转码、音频提取、视频快剪、GIF 动图生成与压缩
+   */
+  public async convertMedia(
+    options: FFmpegConvertOptions,
+    onProgress?: (progress: FFmpegConvertProgress) => void
+  ): Promise<{ success: boolean; taskId: string; outputPath: string; size?: number }> {
+    const status = await this.getStatus()
+    if (!status.installed || !status.path) {
+      throw new Error('未检测到 FFmpeg 独立组件，无法执行转码任务。请先在「应用设置」中配置 FFmpeg。')
+    }
+
+    const { inputPath, outputPath } = options
+    if (!existsSync(inputPath)) {
+      throw new Error(`输入文件不存在: ${inputPath}`)
+    }
+
+    const taskId = 'task_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+    mkdirSync(dirname(outputPath), { recursive: true })
+
+    // 获取时长辅助计算精确百分比
+    let totalDuration = 0
+    if (options.duration) {
+      totalDuration = typeof options.duration === 'number' ? options.duration : parseFloat(String(options.duration))
+    } else {
+      try {
+        const probe = await this.probeMedia(inputPath)
+        totalDuration = probe.duration || 0
+      } catch {}
+    }
+
+    return new Promise((resolve, reject) => {
+      const args: string[] = ['-y']
+
+      // 截取起始时间 (放在 -i 前提高寻道速度)
+      if (options.startTime !== undefined && options.startTime !== '') {
+        args.push('-ss', String(options.startTime))
+      }
+
+      args.push('-i', inputPath)
+
+      // 截取时长
+      if (options.duration !== undefined && options.duration !== '') {
+        args.push('-t', String(options.duration))
+      }
+
+      const isGif = options.isGif || outputPath.toLowerCase().endsWith('.gif')
+      const isAudioOnly =
+        options.videoCodec === 'none' ||
+        ['.mp3', '.wav', '.aac', '.flac', '.m4a', '.ogg'].some((ext) =>
+          outputPath.toLowerCase().endsWith(ext)
+        )
+
+      if (isGif) {
+        const fps = options.fps || 15
+        const scale = options.scale || '-1:-1'
+        // 高保真调色板渲染滤镜
+        args.push(
+          '-filter_complex',
+          `[0:v] fps=${fps},scale=${scale}:flags=lanczos,split [a][b];[a] palettegen=reserve_transparent=on:transparency_color=ffffff [p];[b][p] paletteuse`
+        )
+      } else if (isAudioOnly) {
+        args.push('-vn')
+        if (options.audioCodec && options.audioCodec !== 'none') {
+          args.push('-c:a', options.audioCodec)
+        } else {
+          if (outputPath.endsWith('.mp3')) args.push('-c:a', 'libmp3lame')
+          else if (outputPath.endsWith('.aac') || outputPath.endsWith('.m4a')) args.push('-c:a', 'aac')
+          else if (outputPath.endsWith('.flac')) args.push('-c:a', 'flac')
+          else if (outputPath.endsWith('.wav')) args.push('-c:a', 'pcm_s16le')
+          else if (outputPath.endsWith('.ogg')) args.push('-c:a', 'libvorbis')
+        }
+        if (options.audioBitrate) {
+          args.push('-b:a', options.audioBitrate)
+        }
+      } else {
+        if (options.videoCodec) {
+          args.push('-c:v', options.videoCodec)
+        } else {
+          args.push('-c:v', 'libx264')
+        }
+
+        if (options.crf !== undefined) {
+          args.push('-crf', String(options.crf))
+        }
+
+        if (options.fps) {
+          args.push('-r', String(options.fps))
+        }
+
+        if (options.scale) {
+          args.push('-vf', `scale=${options.scale}`)
+        }
+
+        if (options.videoBitrate) {
+          args.push('-b:v', options.videoBitrate)
+        }
+
+        if (options.audioCodec) {
+          args.push('-c:a', options.audioCodec)
+        } else {
+          args.push('-c:a', 'aac')
+        }
+
+        if (options.audioBitrate) {
+          args.push('-b:a', options.audioBitrate)
+        }
+      }
+
+      if (options.extraArgs && Array.isArray(options.extraArgs)) {
+        args.push(...options.extraArgs)
+      }
+
+      args.push(outputPath)
+
+      console.log(`[FFmpegManager] 启动转码任务 [${taskId}]:`)
+      console.log(`  命令: ${status.path} ${args.join(' ')}`)
+
+      const proc = spawn(status.path!, args, { windowsHide: true })
+      this.activeTasks.set(taskId, proc)
+
+      let stderrOutput = ''
+
+      proc.stderr.on('data', (chunk) => {
+        const text = chunk.toString()
+        stderrOutput += text
+
+        const timeMatch = text.match(/time=\s*(\d+):(\d+):(\d+\.?\d*)/)
+        const speedMatch = text.match(/speed=\s*([0-9.]+)x/)
+        const fpsMatch = text.match(/fps=\s*([0-9.]+)/)
+        const bitrateMatch = text.match(/bitrate=\s*([0-9.]+kbits\/s)/)
+
+        let percent = 0
+        let timemark: string | undefined
+
+        if (timeMatch) {
+          const h = parseFloat(timeMatch[1])
+          const m = parseFloat(timeMatch[2])
+          const s = parseFloat(timeMatch[3])
+          const currentSeconds = h * 3600 + m * 60 + s
+          timemark = `${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3]}`
+
+          if (totalDuration > 0) {
+            percent = Math.min(99, Math.max(0, Math.round((currentSeconds / totalDuration) * 100)))
+          }
+        }
+
+        if (onProgress && (timeMatch || speedMatch)) {
+          onProgress({
+            taskId,
+            percent,
+            timemark,
+            fps: fpsMatch ? parseFloat(fpsMatch[1]) : undefined,
+            speed: speedMatch ? `${speedMatch[1]}x` : undefined,
+            bitrate: bitrateMatch ? bitrateMatch[1] : undefined,
+            status: 'running'
+          })
+        }
+      })
+
+      proc.on('close', (code) => {
+        this.activeTasks.delete(taskId)
+        if (code === 0 && existsSync(outputPath)) {
+          const fileSize = statSync(outputPath).size
+          if (onProgress) {
+            onProgress({
+              taskId,
+              percent: 100,
+              status: 'completed',
+              outputPath
+            })
+          }
+          resolve({ success: true, taskId, outputPath, size: fileSize })
+        } else {
+          if (onProgress) {
+            onProgress({
+              taskId,
+              percent: 0,
+              status: 'failed',
+              error: `转码失败 (退出码 ${code})`
+            })
+          }
+          reject(new Error(`FFmpeg 转码失败 (退出码 ${code}): ${stderrOutput.slice(-300)}`))
+        }
+      })
+
+      proc.on('error', (err) => {
+        this.activeTasks.delete(taskId)
+        if (onProgress) {
+          onProgress({
+            taskId,
+            percent: 0,
+            status: 'failed',
+            error: err.message
+          })
+        }
         reject(new Error(`启动 FFmpeg 进程失败: ${err.message}`))
       })
     })

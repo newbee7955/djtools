@@ -1,6 +1,6 @@
 {
   "name": "doujiao-monorepo",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -11,10 +11,17 @@
   "scripts": {
     "dev": "npm run dev -w apps/host",
     "build:sdk": "npm run build -w packages/plugin-sdk --if-present",
-    "build:plugins": "npm run build -w plugins/douyin && npm run build -w plugins/bilibili && npm run build -w plugins/markdown-editor && npm run build -w plugins/notepad && npm run build -w plugins/clipboard-history && npm run build -w plugins/browser && npm run build -w plugins/samba-manager && npm run build -w plugins/lan-transfer && npm run build -w plugins/object-storage",
+    "build:plugins": "npm run build -w plugins/douyin && npm run build -w plugins/bilibili && npm run build -w plugins/markdown-editor && npm run build -w plugins/notepad && npm run build -w plugins/clipboard-history && npm run build -w plugins/browser && npm run build -w plugins/samba-manager && npm run build -w plugins/lan-transfer && npm run build -w plugins/object-storage && npm run build -w plugins/dev-toys && npm run build -w plugins/media-converter && npm run build -w plugins/ocr-recognizer",
     "build:host": "npm run build -w apps/host",
     "package:win": "npm run build:win -w apps/host",
     "create-plugin": "node scripts/create-plugin.cjs",
     "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "dependencies": {
+    "@types/diff": "^7.0.2",
+    "@types/js-yaml": "^4.0.9",
+    "diff": "^9.0.0",
+    "js-yaml": "^5.4.1",
+    "tesseract.js": "^7.0.0"
   }
 }

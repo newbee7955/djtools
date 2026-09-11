@@ -130,6 +130,34 @@ const sdk: DoujiaoSDK = {
     },
     checkFFmpeg: () => {
       return ipcRenderer.invoke('plugin:media:check-ffmpeg')
+    },
+    convert: (options: any) => {
+      return ipcRenderer.invoke('plugin:media:convert', options)
+    },
+    probe: (filePath: string) => {
+      return ipcRenderer.invoke('plugin:media:probe', filePath)
+    },
+    cancelConvert: (taskId: string) => {
+      return ipcRenderer.invoke('plugin:media:cancel', taskId)
+    },
+    showItemInFolder: (localPath: string) => {
+      return ipcRenderer.invoke('plugin:media:show-in-folder', localPath)
+    },
+    openPath: (localPath: string) => {
+      return ipcRenderer.invoke('plugin:media:open-path', localPath)
+    },
+    onProgress: (callback: (progress: any) => void) => {
+      const handler = (_: any, progress: any) => {
+        try {
+          callback(progress)
+        } catch (err) {
+          console.error('[DoujiaoSDK] 媒体转码进度监听异常:', err)
+        }
+      }
+      ipcRenderer.on('plugin:media:progress', handler)
+      return () => {
+        ipcRenderer.removeListener('plugin:media:progress', handler)
+      }
     }
   },
 
@@ -231,6 +259,23 @@ const sdk: DoujiaoSDK = {
       ipcRenderer.on('plugin:lan:event', handler)
       return () => {
         ipcRenderer.removeListener('plugin:lan:event', handler)
+      }
+    }
+  },
+
+  screen: {
+    capture: (options?: any) => ipcRenderer.invoke('plugin:screen:capture', options),
+    onCaptured: (callback: (result: any) => void) => {
+      const handler = (_: any, res: any) => {
+        try {
+          callback(res)
+        } catch (err) {
+          console.error('[DoujiaoSDK] 屏幕截图监听回调异常:', err)
+        }
+      }
+      ipcRenderer.on('plugin:screen:captured', handler)
+      return () => {
+        ipcRenderer.removeListener('plugin:screen:captured', handler)
       }
     }
   },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import appIcon from './assets/app-icon.png'
 
 interface PluginInfo {
@@ -28,6 +28,7 @@ interface MarketPlugin {
   installedVersion?: string
   hasUpdate: boolean
   isDev?: boolean
+  enabled?: boolean
 }
 
 interface FFmpegStatus {
@@ -153,6 +154,9 @@ function getPluginEmoji(plugin: { id?: string; icon?: string }): string {
   if (id.includes('samba')) return '🗄️'
   if (id.includes('album') || id.includes('photo')) return '📸'
   if (id.includes('image-editor')) return '🎨'
+  if (id.includes('dev-toys') || id.includes('devtoys')) return '🛠️'
+  if (id.includes('ocr')) return '🔍'
+  if (id.includes('media-converter') || id.includes('convert')) return '🎬'
   return '🧩'
 }
 
@@ -167,6 +171,8 @@ export default function App(): JSX.Element {
   const [ffmpegStatus, setFFmpegStatus] = useState<FFmpegStatus>({ installed: false })
   const [loadingMarket, setLoadingMarket] = useState(false)
   const [installingPluginId, setInstallingPluginId] = useState<string | null>(null)
+  const [isInstallingAll, setIsInstallingAll] = useState(false)
+  const [installAllProgress, setInstallAllProgress] = useState<{ current: number; total: number; name: string } | null>(null)
   const [ffmpegLoading, setFFmpegLoading] = useState(false)
   const [ffmpegProgress, setFFmpegProgress] = useState<{ percent: number; speed?: string; text?: string } | null>(null)
   const [ffmpegCardMsg, setFFmpegCardMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
@@ -198,6 +204,25 @@ export default function App(): JSX.Element {
   const [updateProgress, setUpdateProgress] = useState<any | null>(null)
   const [updateDownloaded, setUpdateDownloaded] = useState<boolean>(false)
   const [updateCardMsg, setUpdateCardMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+
+  // 置顶插件 ID 列表 (持久化于 localStorage，排列顺序即主侧边栏显示顺序)
+  const [pinnedPluginIds, setPinnedPluginIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('doujiao_pinned_plugins')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return []
+  })
+
+  // 拖动排序状态
+  const [draggedPluginId, setDraggedPluginId] = useState<string | null>(null)
+  const [dragOverPluginId, setDragOverPluginId] = useState<string | null>(null)
+  const [dropPosition, setDropPosition] = useState<'before' | 'after' | null>(null)
+
+  // 更多插件弹出菜单状态与定位
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [moreMenuPos, setMoreMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+  const moreTimeoutRef = useRef<any>(null)
 
   // 统一文件存储与工作目录状态
   const [workspaces, setWorkspaces] = useState<{ downloads: string; notepad: string; markdown: string }>({
@@ -260,6 +285,8 @@ export default function App(): JSX.Element {
     window.hostAPI?.setRightDrawerWidth?.(showTasksDrawer ? 384 : 0)
   }, [showTasksDrawer])
 
+  // 更多插件菜单现由主进程原生悬浮层 (MoreMenuPopoverManager) 接管，完全悬浮且不挤压主视口 WebContentsView
+
   // 按 Escape 键自动收起下载抽屉
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -294,6 +321,161 @@ export default function App(): JSX.Element {
         return exists ? prev : 'market'
       })
     }
+  }
+
+  // 首次运行若未设置过置顶列表，默认将前 4 个常用插件设为置顶；同时清理已卸载插件的 ID
+  useEffect(() => {
+    if (plugins.length > 0) {
+      try {
+        const saved = localStorage.getItem('doujiao_pinned_plugins')
+        if (saved === null) {
+          const initialPinned = plugins.slice(0, 4).map((p) => p.id)
+          setPinnedPluginIds(initialPinned)
+          localStorage.setItem('doujiao_pinned_plugins', JSON.stringify(initialPinned))
+        } else {
+          const validIds = new Set(plugins.map((p) => p.id))
+          setPinnedPluginIds((prev) => {
+            const cleaned = prev.filter((id) => validIds.has(id))
+            if (cleaned.length !== prev.length) {
+              localStorage.setItem('doujiao_pinned_plugins', JSON.stringify(cleaned))
+              return cleaned
+            }
+            return prev
+          })
+        }
+      } catch {}
+    }
+  }, [plugins])
+
+  // 切换置顶状态（置顶 / 取消置顶移入更多）
+  const handleTogglePin = (pluginId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    setPinnedPluginIds((prev) => {
+      let next: string[]
+      if (prev.includes(pluginId)) {
+        next = prev.filter((id) => id !== pluginId)
+      } else {
+        next = [...prev, pluginId]
+      }
+      try {
+        localStorage.setItem('doujiao_pinned_plugins', JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }
+
+  // 拖拽排序逻辑
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+    setDraggedPluginId(id)
+  }
+
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (draggedPluginId === targetId) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const midY = rect.top + rect.height / 2
+    const pos = e.clientY < midY ? 'before' : 'after'
+
+    setDragOverPluginId(targetId)
+    setDropPosition(pos)
+  }
+
+  const handleDragLeave = (e: React.DragEvent, targetId: string) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return
+    if (dragOverPluginId === targetId) {
+      setDragOverPluginId(null)
+      setDropPosition(null)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault()
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedPluginId
+    if (sourceId && targetId && sourceId !== targetId) {
+      setPinnedPluginIds((prev) => {
+        const sourceIndex = prev.indexOf(sourceId)
+        let targetIndex = prev.indexOf(targetId)
+        if (sourceIndex === -1 || targetIndex === -1) return prev
+
+        const next = [...prev]
+        const [movedItem] = next.splice(sourceIndex, 1)
+
+        targetIndex = next.indexOf(targetId)
+        const insertIndex = dropPosition === 'after' ? targetIndex + 1 : targetIndex
+        next.splice(insertIndex, 0, movedItem)
+
+        try {
+          localStorage.setItem('doujiao_pinned_plugins', JSON.stringify(next))
+        } catch {}
+        return next
+      })
+    }
+    setDraggedPluginId(null)
+    setDragOverPluginId(null)
+    setDropPosition(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedPluginId(null)
+    setDragOverPluginId(null)
+    setDropPosition(null)
+  }
+
+  // 计算置顶插件与未置顶插件列表
+  const pinnedPlugins: PluginInfo[] = pinnedPluginIds
+    .map((id) => plugins.find((p) => p.id === id))
+    .filter((p): p is PluginInfo => Boolean(p))
+
+  const unpinnedPlugins: PluginInfo[] = plugins.filter(
+    (p) => !pinnedPluginIds.includes(p.id)
+  )
+
+  // 更多插件按钮悬停与弹出控制 (原生独立悬浮层，不挤压主视口 WebContentsView)
+  const handleMoreMouseEnter = (e: React.MouseEvent) => {
+    if (moreTimeoutRef.current) clearTimeout(moreTimeoutRef.current)
+    const rect = e.currentTarget.getBoundingClientRect()
+    const left = sidebarCollapsed ? 68 + 4 : 240 + 4
+    window.hostAPI?.showMoreMenuPopover?.({
+      top: rect.top,
+      left,
+      plugins: unpinnedPlugins.map((p) => ({
+        id: p.id,
+        name: p.name,
+        icon: p.icon,
+        enabled: p.enabled !== false,
+        isDev: p.isDev
+      })),
+      activeTab,
+      theme
+    })
+  }
+
+  const handleMoreClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (moreTimeoutRef.current) clearTimeout(moreTimeoutRef.current)
+    const rect = e.currentTarget.getBoundingClientRect()
+    const left = sidebarCollapsed ? 68 + 4 : 240 + 4
+    window.hostAPI?.showMoreMenuPopover?.({
+      top: rect.top,
+      left,
+      plugins: unpinnedPlugins.map((p) => ({
+        id: p.id,
+        name: p.name,
+        icon: p.icon,
+        enabled: p.enabled !== false,
+        isDev: p.isDev
+      })),
+      activeTab,
+      theme
+    })
+  }
+
+  const handleMoreMouseLeave = () => {
+    window.hostAPI?.scheduleHideMoreMenuPopover?.(250)
   }
 
   // 2. 加载远端插件市场聚合清单
@@ -433,6 +615,16 @@ export default function App(): JSX.Element {
     }
   }, [activeTab])
 
+  // 监听来自主进程的外壳导航指令 (例如全局截图后自动激活图片编辑插件)
+  useEffect(() => {
+    const cleanup = window.hostAPI?.onNavigate?.((tab: string) => {
+      if (tab) {
+        setActiveTab(tab)
+      }
+    })
+    return () => cleanup?.()
+  }, [])
+
   // 定期拉取下载任务列表
   useEffect(() => {
     const fetchTasks = async () => {
@@ -570,6 +762,120 @@ export default function App(): JSX.Element {
       setTimeout(() => setInstallMsg(null), 4000)
     }
   }
+
+  // 切换插件启用/禁用状态
+  const handleTogglePlugin = async (pluginId: string, enabled: boolean) => {
+    if (!window.hostAPI?.togglePlugin) return
+    try {
+      const res = await window.hostAPI.togglePlugin(pluginId, enabled)
+      if (res && res.success) {
+        const targetPlugin = plugins.find((p) => p.id === pluginId) || marketPlugins.find((p) => p.id === pluginId)
+        const name = targetPlugin?.name || pluginId
+        setInstallMsg({
+          text: `插件【${name}】已${enabled ? '启用' : '禁用'}！${
+            pluginId === 'clipboard-history'
+              ? enabled
+                ? '（已恢复剪贴板后台监听与记录）'
+                : '（已停止剪贴板后台监听与数据采集）'
+              : ''
+          }`,
+          type: 'success'
+        })
+        if (!enabled && activeTab === pluginId) {
+          setActiveTab('market')
+        }
+        await fetchPlugins()
+        await fetchMarket()
+      } else {
+        setInstallMsg({ text: `操作失败: ${res?.error || '未知原因'}`, type: 'error' })
+      }
+    } catch (err: any) {
+      setInstallMsg({ text: `操作异常: ${err?.message}`, type: 'error' })
+    } finally {
+      setTimeout(() => setInstallMsg(null), 4000)
+    }
+  }
+
+  // 市场一键全部安装
+  const handleInstallAll = async () => {
+    const uninstalled = marketPlugins.filter((p) => !p.isInstalled)
+    if (uninstalled.length === 0 || !window.hostAPI?.installMarketPlugin) return
+
+    setIsInstallingAll(true)
+    let successCount = 0
+    let failCount = 0
+
+    for (let i = 0; i < uninstalled.length; i++) {
+      const p = uninstalled[i]
+      setInstallAllProgress({ current: i + 1, total: uninstalled.length, name: p.name })
+      try {
+        const res = await window.hostAPI.installMarketPlugin(p.id, p.latestVersion)
+        if (res && res.success) {
+          successCount++
+        } else {
+          failCount++
+          console.warn(`[InstallAll] 安装插件 ${p.name} 失败:`, res?.error)
+        }
+      } catch (err) {
+        failCount++
+        console.error(`[InstallAll] 安装插件 ${p.name} 异常:`, err)
+      }
+    }
+
+    setIsInstallingAll(false)
+    setInstallAllProgress(null)
+    await fetchPlugins()
+    await fetchMarket(true)
+
+    if (failCount === 0) {
+      setInstallMsg({
+        text: `✓ 一键安装完成！已成功安装全部 ${successCount} 款插件。`,
+        type: 'success'
+      })
+    } else {
+      setInstallMsg({
+        text: `批量安装完成：成功 ${successCount} 个，失败 ${failCount} 个。`,
+        type: 'error'
+      })
+    }
+    setTimeout(() => setInstallMsg(null), 5000)
+  }
+
+  // 点击打开插件（若被禁用则友好提示启用）
+  const handleSelectPlugin = (plugin: { id: string; name: string; enabled?: boolean }) => {
+    setMoreMenuOpen(false)
+    if (plugin.enabled === false) {
+      const confirmEnable = window.confirm(`插件【${plugin.name}】当前处于禁用状态，是否立即启用并打开？`)
+      if (confirmEnable) {
+        handleTogglePlugin(plugin.id, true).then(() => {
+          setActiveTab(plugin.id)
+        })
+      }
+      return
+    }
+    setActiveTab(plugin.id)
+  }
+
+  // 监听来自独立悬浮层 (MoreMenuPopover) 的用户交互指令 (打开插件、置顶切换、禁用/启用切换、卸载)
+  useEffect(() => {
+    const cleanup = window.hostAPI?.onMoreMenuAction?.((action: string, data: any) => {
+      if (action === 'select') {
+        const targetPlugin = plugins.find((p) => p.id === data.pluginId)
+        if (targetPlugin) {
+          handleSelectPlugin(targetPlugin)
+        } else if (data.pluginId) {
+          setActiveTab(data.pluginId)
+        }
+      } else if (action === 'pin') {
+        handleTogglePin(data.pluginId)
+      } else if (action === 'toggle') {
+        handleTogglePlugin(data.pluginId, data.enabled)
+      } else if (action === 'uninstall') {
+        handleUninstall(data.pluginId, data.name)
+      }
+    })
+    return () => cleanup?.()
+  }, [plugins, pinnedPluginIds])
 
   // 网络代理切换与保存
   const handleUpdateProxyMode = async (mode: 'system' | 'direct' | 'custom') => {
@@ -903,9 +1209,12 @@ export default function App(): JSX.Element {
             {!sidebarCollapsed ? (
               <>
                 <div className={`flex items-center gap-1.5 text-[11px] font-semibold tracking-wider ${currentTheme.textMuted} uppercase`}>
-                  <span>已安装插件</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${currentTheme.subcardBg} text-emerald-600 dark:text-emerald-400 font-mono font-semibold`}>
-                    {plugins.length}
+                  <span>置顶插件</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${currentTheme.subcardBg} text-emerald-600 dark:text-emerald-400 font-mono font-semibold`}
+                    title={`已置顶 ${pinnedPlugins.length} 个 / 共安装 ${plugins.length} 个`}
+                  >
+                    {pinnedPlugins.length}{unpinnedPlugins.length > 0 ? `/${plugins.length}` : ''}
                   </span>
                 </div>
                 <button
@@ -929,7 +1238,7 @@ export default function App(): JSX.Element {
             )}
           </div>
 
-          {/* 中间已安装插件独立滚动列表 */}
+          {/* 中间插件滚动列表（展示置顶插件与“更多”按钮） */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-1.5 pr-0.5">
             {plugins.length === 0 ? (
               !sidebarCollapsed ? (
@@ -954,116 +1263,227 @@ export default function App(): JSX.Element {
                 </div>
               )
             ) : (
-              plugins.map((plugin) => {
-                const isActive = activeTab === plugin.id
-                const emoji = getPluginEmoji(plugin)
+              <>
+                {/* 1. 置顶插件列表（支持拖拽排序） */}
+                {pinnedPlugins.map((plugin) => {
+                  const isActive = activeTab === plugin.id
+                  const emoji = getPluginEmoji(plugin)
 
-                if (sidebarCollapsed) {
-                  return (
-                    <div key={plugin.id} className="relative group flex justify-center">
-                      <button
-                        onClick={() => setActiveTab(plugin.id)}
-                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all relative ${
-                          isActive
-                            ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/40 shadow-md ring-1 ring-emerald-500/20'
-                            : theme === 'light'
-                            ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
-                            : theme === 'cyber'
-                            ? 'text-sky-300/80 hover:bg-[#10223d] hover:text-sky-100 border border-transparent'
-                            : 'text-slate-400 hover:bg-slate-800/90 hover:text-slate-200 border border-transparent'
+                  if (sidebarCollapsed) {
+                    return (
+                      <div
+                        key={plugin.id}
+                        draggable={true}
+                        onDragStart={(e) => handleDragStart(e, plugin.id)}
+                        onDragOver={(e) => handleDragOver(e, plugin.id)}
+                        onDragLeave={(e) => handleDragLeave(e, plugin.id)}
+                        onDrop={(e) => handleDrop(e, plugin.id)}
+                        onDragEnd={handleDragEnd}
+                        className={`relative group flex justify-center transition-all ${
+                          draggedPluginId === plugin.id ? 'opacity-40 scale-95' : ''
+                        } ${
+                          dragOverPluginId === plugin.id && dropPosition === 'before' ? 'border-t-2 !border-t-emerald-500' : ''
+                        } ${
+                          dragOverPluginId === plugin.id && dropPosition === 'after' ? 'border-b-2 !border-b-emerald-500' : ''
                         }`}
                       >
-                        {isActive && (
-                          <span className="absolute left-0.5 top-2.5 bottom-2.5 w-1 rounded-full bg-emerald-500" />
-                        )}
-                        <span className="text-xl group-hover:scale-110 transition-transform">
-                          {emoji}
-                        </span>
-                      </button>
+                        <button
+                          onClick={() => handleSelectPlugin(plugin)}
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all relative ${
+                            isActive
+                              ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/40 shadow-md ring-1 ring-emerald-500/20'
+                              : theme === 'light'
+                              ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+                              : theme === 'cyber'
+                              ? 'text-sky-300/80 hover:bg-[#10223d] hover:text-sky-100 border border-transparent'
+                              : 'text-slate-400 hover:bg-slate-800/90 hover:text-slate-200 border border-transparent'
+                          } ${plugin.enabled === false ? 'opacity-50' : ''}`}
+                          title={`${plugin.name}${plugin.enabled === false ? ' (已禁用)' : ''} (可拖拽排序)`}
+                        >
+                          {isActive && (
+                            <span className="absolute left-0.5 top-2.5 bottom-2.5 w-1 rounded-full bg-emerald-500" />
+                          )}
+                          <span className="text-xl group-hover:scale-110 transition-transform">
+                            {emoji}
+                          </span>
+                          {plugin.enabled === false && (
+                            <span className="absolute bottom-1 right-1 text-[9px] leading-none select-none">⏸️</span>
+                          )}
+                        </button>
+                      </div>
+                    )
+                  }
 
-                      {/* 悬浮气泡卡片 (Tooltip) */}
-                      <div className="absolute left-full ml-2.5 top-1/2 -translate-y-1/2 z-50 pointer-events-none opacity-0 group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-150 transform translate-x-1 group-hover:translate-x-0">
-                        <div className={`${currentTheme.cardBg} border ${currentTheme.border} rounded-xl p-2.5 shadow-2xl min-w-[150px] whitespace-nowrap text-left space-y-1`}>
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`font-semibold text-xs ${currentTheme.textPrimary}`}>{plugin.name}</span>
-                            {!plugin.isDev && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleUninstall(plugin.id, plugin.name)
-                                }}
-                                title="卸载此插件"
-                                className="text-slate-400 hover:text-rose-500 p-0.5 rounded text-[11px]"
-                              >
-                                🗑️
-                              </button>
+                  return (
+                    <div
+                      key={plugin.id}
+                      draggable={true}
+                      onDragStart={(e) => handleDragStart(e, plugin.id)}
+                      onDragOver={(e) => handleDragOver(e, plugin.id)}
+                      onDragLeave={(e) => handleDragLeave(e, plugin.id)}
+                      onDrop={(e) => handleDrop(e, plugin.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`group relative w-full flex items-center justify-between rounded-xl transition-all select-none ${
+                        isActive
+                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 shadow-xs'
+                          : theme === 'light'
+                          ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
+                          : theme === 'cyber'
+                          ? 'text-sky-300/80 hover:bg-[#10223d] hover:text-sky-100 border border-transparent'
+                          : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200 border border-transparent'
+                      } ${
+                        draggedPluginId === plugin.id ? 'opacity-40 scale-[0.98]' : ''
+                      } ${
+                        dragOverPluginId === plugin.id && dropPosition === 'before' ? 'border-t-2 !border-t-emerald-500' : ''
+                      } ${
+                        dragOverPluginId === plugin.id && dropPosition === 'after' ? 'border-b-2 !border-b-emerald-500' : ''
+                      }`}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-emerald-500" />
+                      )}
+
+                      <button
+                        onClick={() => handleSelectPlugin(plugin)}
+                        className={`flex items-center gap-2.5 px-2.5 py-2.5 flex-1 min-w-0 text-left cursor-pointer ${
+                          plugin.enabled === false ? 'opacity-60' : ''
+                        }`}
+                      >
+                        {/* 拖拽手柄图标 (悬停显现) */}
+                        <span
+                          className="opacity-0 group-hover:opacity-40 hover:!opacity-100 transition-opacity text-xs cursor-grab active:cursor-grabbing text-slate-400 -mr-0.5 select-none"
+                          title="拖动调整顺序"
+                        >
+                          ⋮⋮
+                        </span>
+
+                        <span className={`w-8 h-8 rounded-lg border flex items-center justify-center text-base flex-shrink-0 group-hover:scale-105 transition-transform relative ${
+                          theme === 'light'
+                            ? 'bg-slate-100 border-slate-200/80 text-slate-800'
+                            : theme === 'cyber'
+                            ? 'bg-[#0f2444] border-[#1a365d] text-sky-200'
+                            : 'bg-slate-800/70 border-slate-700/50 text-slate-200'
+                        }`}>
+                          {emoji}
+                          {plugin.enabled === false && (
+                            <span className="absolute -top-1 -right-1 text-[9px] leading-none">⏸️</span>
+                          )}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-semibold leading-tight truncate ${isActive ? 'text-emerald-500 font-bold' : currentTheme.textPrimary}`}>
+                              {plugin.name}
+                            </span>
+                            {plugin.enabled === false && (
+                              <span className="text-[9px] px-1 rounded bg-slate-700/50 text-slate-400 font-mono flex-shrink-0">已禁用</span>
+                            )}
+                            {plugin.isDev && (
+                              <span className="text-[9px] px-1 rounded bg-amber-500/15 text-amber-500 font-mono flex-shrink-0">开发</span>
                             )}
                           </div>
-                          <div className={`text-[10px] ${currentTheme.textMuted} flex items-center gap-1`}>
-                            <span>v{plugin.version}</span>
-                            {plugin.isDev && <span className="text-amber-500/80">(开发版)</span>}
-                          </div>
                         </div>
+                      </button>
+
+                      {/* 悬停操作组：启用/禁用切换、取消置顶与卸载 */}
+                      <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 pr-1.5 transition-opacity flex-shrink-0">
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleTogglePlugin(plugin.id, plugin.enabled === false)
+                          }}
+                          title={plugin.enabled === false ? '点击启用插件' : '点击禁用插件'}
+                          className="p-1 rounded hover:bg-slate-700/40 text-slate-400 hover:text-amber-400 text-xs transition-colors"
+                        >
+                          {plugin.enabled === false ? '▶️' : '⏸️'}
+                        </button>
+                        <button
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => handleTogglePin(plugin.id, e)}
+                          title="取消置顶 (移至更多)"
+                          className="p-1 rounded hover:bg-slate-700/40 text-emerald-500 hover:text-emerald-400 text-xs transition-colors"
+                        >
+                          📌
+                        </button>
+                        {!plugin.isDev && (
+                          <button
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleUninstall(plugin.id, plugin.name)
+                            }}
+                            title={`卸载插件 ${plugin.name}`}
+                            className="p-1 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-500 transition-all text-xs"
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
-                }
+                })}
 
-                return (
-                  <div
-                    key={plugin.id}
-                    className={`group relative w-full flex items-center justify-between rounded-xl transition-all ${
-                      isActive
-                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 shadow-xs'
-                        : theme === 'light'
-                        ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-transparent'
-                        : theme === 'cyber'
-                        ? 'text-sky-300/80 hover:bg-[#10223d] hover:text-sky-100 border border-transparent'
-                        : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200 border border-transparent'
-                    }`}
-                  >
-                    {isActive && (
-                      <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r bg-emerald-500" />
-                    )}
-                    <button
-                      onClick={() => setActiveTab(plugin.id)}
-                      className="flex items-center gap-3 px-3 py-2.5 flex-1 min-w-0 text-left"
-                    >
-                      <span className={`w-8 h-8 rounded-lg border flex items-center justify-center text-base flex-shrink-0 group-hover:scale-105 transition-transform ${
-                        theme === 'light'
-                          ? 'bg-slate-100 border-slate-200/80 text-slate-800'
-                          : theme === 'cyber'
-                          ? 'bg-[#0f2444] border-[#1a365d] text-sky-200'
-                          : 'bg-slate-800/70 border-slate-700/50 text-slate-200'
-                      }`}>
-                        {emoji}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className={`text-xs font-semibold leading-tight truncate ${isActive ? 'text-emerald-500 font-bold' : currentTheme.textPrimary}`}>{plugin.name}</div>
-                        <div className={`text-[10px] ${currentTheme.textMuted} mt-1 flex items-center gap-1.5`}>
-                          <span>v{plugin.version}</span>
-                          {plugin.isDev && (
-                            <span className="text-amber-500/80 font-mono">(开发版)</span>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-
-                    {!plugin.isDev && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUninstall(plugin.id, plugin.name)
-                        }}
-                        title={`卸载插件 ${plugin.name}`}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 mr-1.5 rounded-md hover:bg-rose-500/20 text-slate-400 hover:text-rose-500 transition-all text-xs flex-shrink-0"
-                      >
-                        🗑️
-                      </button>
-                    )}
+                {/* 若置顶为空，提示用户 */}
+                {pinnedPlugins.length === 0 && (
+                  <div className={`px-3 py-4 rounded-xl ${currentTheme.subcardBg} border border-dashed ${currentTheme.border} text-center space-y-1`}>
+                    <div className={`text-xs ${currentTheme.textMuted} font-medium`}>暂无置顶插件</div>
+                    <div className={`text-[10px] ${currentTheme.textMuted}`}>鼠标悬停下方「更多插件」点 📌 即可固定</div>
                   </div>
-                )
-              })
+                )}
+
+                {/* 2. “更多插件” 按钮（当有未置顶插件时展示） */}
+                {unpinnedPlugins.length > 0 && (
+                  !sidebarCollapsed ? (
+                    <div className="pt-1">
+                      <button
+                        id="more-plugins-btn"
+                        onMouseEnter={handleMoreMouseEnter}
+                        onMouseLeave={handleMoreMouseLeave}
+                        onClick={handleMoreClick}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                          unpinnedPlugins.some((p) => p.id === activeTab)
+                            ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 font-semibold'
+                            : theme === 'light'
+                            ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60'
+                            : theme === 'cyber'
+                            ? 'text-sky-300/80 hover:bg-[#10223d] hover:text-sky-100 border border-[#1a365d]/50'
+                            : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200 border border-slate-800/60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base font-mono">⋯</span>
+                          <span>更多插件</span>
+                        </div>
+                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${currentTheme.subcardBg} text-emerald-500 border ${currentTheme.border}`}>
+                          {unpinnedPlugins.length}
+                        </span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex justify-center pt-1">
+                      <button
+                        id="more-plugins-btn"
+                        onMouseEnter={handleMoreMouseEnter}
+                        onMouseLeave={handleMoreMouseLeave}
+                        onClick={handleMoreClick}
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all relative ${
+                          unpinnedPlugins.some((p) => p.id === activeTab)
+                            ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/40 shadow-md'
+                            : theme === 'light'
+                            ? 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60'
+                            : theme === 'cyber'
+                            ? 'text-sky-300/80 hover:bg-[#10223d] hover:text-sky-100 border border-[#1a365d]/50'
+                            : 'text-slate-400 hover:bg-slate-800/90 hover:text-slate-200 border border-slate-800/60'
+                        }`}
+                        title={`更多插件 (${unpinnedPlugins.length} 个)`}
+                      >
+                        <span className="text-lg font-mono">⋯</span>
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500" />
+                      </button>
+                    </div>
+                  )
+                )}
+              </>
             )}
           </div>
 
@@ -1185,6 +1605,34 @@ export default function App(): JSX.Element {
                   >
                     {loadingMarket ? '刷新中...' : '🔄 刷新'}
                   </button>
+                  {/* 一键全部安装 */}
+                  {(() => {
+                    const uninstalledCount = marketPlugins.filter((p) => !p.isInstalled).length
+                    if (uninstalledCount === 0) return null
+                    return (
+                      <button
+                        onClick={handleInstallAll}
+                        disabled={isInstallingAll}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {isInstallingAll ? (
+                          <>
+                            <span className="inline-block animate-spin">⏳</span>
+                            <span>
+                              安装中 ({installAllProgress?.current}/{installAllProgress?.total}: {installAllProgress?.name})
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span>⚡ 一键全部安装</span>
+                            <span className="px-1.5 py-0.5 bg-white/20 rounded-full text-[10px] font-mono">
+                              {uninstalledCount}
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    )
+                  })()}
                   <button
                     onClick={handleInstallZip}
                     className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-semibold text-xs transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2"
@@ -1198,7 +1646,7 @@ export default function App(): JSX.Element {
                 {marketPlugins.map((plugin) => (
                   <div
                     key={plugin.id}
-                    className={`p-5 rounded-xl ${currentTheme.cardBg} border ${currentTheme.border} hover:border-emerald-500/40 transition-all flex flex-col justify-between hover:shadow-md`}
+                    className={`p-5 rounded-xl ${currentTheme.cardBg} border ${currentTheme.border} ${plugin.isInstalled && plugin.enabled === false ? 'opacity-70' : ''} hover:border-emerald-500/40 transition-all flex flex-col justify-between hover:shadow-md`}
                   >
                     <div>
                       <div className="flex items-start justify-between">
@@ -1208,23 +1656,33 @@ export default function App(): JSX.Element {
                           </span>
                           <div>
                             <h3 className={`font-semibold ${currentTheme.textPrimary}`}>{plugin.name}</h3>
-                            <p className={`text-xs ${currentTheme.textMuted} mt-0.5`}>
-                              {plugin.publisher} • 最新 v{plugin.latestVersion}
-                              {plugin.size > 0 && ` • ${(plugin.size / 1024).toFixed(0)} KB`}
-                            </p>
+                            <div className={`text-xs ${currentTheme.textMuted} mt-0.5 flex items-center gap-1.5 flex-wrap`}>
+                              <span>{plugin.publisher}</span>
+                              <span>•</span>
+                              <span>{plugin.hasUpdate ? `最新 v${plugin.latestVersion}` : `v${plugin.latestVersion}`}</span>
+                              {plugin.size > 0 && <span>• {(plugin.size / 1024).toFixed(0)} KB</span>}
+                            </div>
                           </div>
                         </div>
 
                         {plugin.hasUpdate ? (
-                          <span className="px-2 py-0.5 text-xs rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/30 animate-pulse">
-                            有更新
+                          <span className="px-2 py-0.5 text-xs rounded bg-amber-500/10 text-amber-600 dark:text-amber-500 border border-amber-500/30 animate-pulse font-mono font-semibold whitespace-nowrap">
+                            可更新 (v{plugin.installedVersion} → v{plugin.latestVersion})
                           </span>
                         ) : plugin.isInstalled ? (
-                          <span className="px-2 py-0.5 text-xs rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20">
-                            已安装
-                          </span>
+                          plugin.enabled === false ? (
+                            <span className="px-2 py-0.5 text-xs rounded bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/20 font-medium whitespace-nowrap flex items-center gap-1">
+                              <span>⏸️</span>
+                              <span>已禁用</span>
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-xs rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20 font-medium whitespace-nowrap flex items-center gap-1">
+                              <span>✓</span>
+                              <span>已启用</span>
+                            </span>
+                          )
                         ) : (
-                          <span className={`px-2 py-0.5 text-xs rounded ${currentTheme.subcardBg} ${currentTheme.textMuted} border ${currentTheme.border}`}>
+                          <span className={`px-2 py-0.5 text-xs rounded ${currentTheme.subcardBg} ${currentTheme.textMuted} border ${currentTheme.border} whitespace-nowrap`}>
                             未安装
                           </span>
                         )}
@@ -1276,7 +1734,7 @@ export default function App(): JSX.Element {
                       <div className="flex items-center gap-2">
                         {plugin.isInstalled && !plugin.hasUpdate && (
                           <button
-                            onClick={() => setActiveTab(plugin.id)}
+                            onClick={() => handleSelectPlugin(plugin)}
                             className={`px-3 py-1 text-xs rounded ${currentTheme.btnGhost} text-emerald-600 dark:text-emerald-400 font-semibold transition-colors`}
                           >
                             打开
@@ -1296,10 +1754,25 @@ export default function App(): JSX.Element {
                         {!plugin.isInstalled && (
                           <button
                             onClick={() => handleMarketInstall(plugin)}
-                            disabled={installingPluginId === plugin.id}
+                            disabled={installingPluginId === plugin.id || isInstallingAll}
                             className="px-3.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors shadow-md shadow-emerald-600/20"
                           >
                             {installingPluginId === plugin.id ? '安装中...' : '一键安装'}
+                          </button>
+                        )}
+
+                        {/* 启用/禁用状态切换按钮 */}
+                        {plugin.isInstalled && (
+                          <button
+                            onClick={() => handleTogglePlugin(plugin.id, plugin.enabled === false)}
+                            className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                              plugin.enabled === false
+                                ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                : `${currentTheme.subcardBg} ${currentTheme.hoverBg} ${currentTheme.textMuted} ${currentTheme.hoverText} border ${currentTheme.border}`
+                            }`}
+                            title={plugin.enabled === false ? '点击启用此插件' : '点击禁用此插件'}
+                          >
+                            {plugin.enabled === false ? '▶️ 启用' : '⏸️ 禁用'}
                           </button>
                         )}
 
@@ -1426,78 +1899,6 @@ export default function App(): JSX.Element {
                   )}
                 </div>
 
-                {/* 已安装插件与卸载管理 */}
-                <div className={`space-y-3 pb-5 border-b ${currentTheme.border}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className={`text-sm font-medium ${currentTheme.textPrimary} flex items-center gap-2`}>
-                        <span>已安装插件管理</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${currentTheme.subcardBg} ${currentTheme.textMuted} border ${currentTheme.border}`}>
-                          {plugins.length} 个
-                        </span>
-                      </div>
-                      <div className={`text-xs ${currentTheme.textMuted} mt-0.5`}>
-                        查看已安装扩展插件的运行状态，支持一键安全卸载
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setActiveTab('market')}
-                      className="text-xs text-emerald-500 hover:underline"
-                    >
-                      前往市场安装 →
-                    </button>
-                  </div>
-
-                  {plugins.length === 0 ? (
-                    <div className={`p-4 rounded-xl ${currentTheme.subcardBg} border ${currentTheme.border} text-center text-xs ${currentTheme.textMuted}`}>
-                      当前暂无已安装插件，可前往插件市场按需下载
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {plugins.map((p) => (
-                        <div
-                          key={p.id}
-                          className={`p-3 rounded-lg ${currentTheme.subcardBg} border ${currentTheme.border} flex items-center justify-between`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">
-                              {getPluginEmoji(p)}
-                            </span>
-                            <div>
-                              <div className={`text-sm font-semibold ${currentTheme.textPrimary} flex items-center gap-2`}>
-                                <span>{p.name}</span>
-                                <span className={`text-xs font-mono ${currentTheme.textMuted}`}>v{p.version}</span>
-                                {p.isDev ? (
-                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500 border border-amber-500/30">开发版</span>
-                                ) : (
-                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/30">已就绪</span>
-                                )}
-                              </div>
-                              <div className={`text-xs ${currentTheme.textMuted} font-mono mt-0.5`}>{p.id}</div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setActiveTab(p.id)}
-                              className={`px-3 py-1 text-xs rounded ${currentTheme.btnGhost} text-emerald-600 dark:text-emerald-400 font-medium transition-colors`}
-                            >
-                              打开
-                            </button>
-                            {!p.isDev && (
-                              <button
-                                onClick={() => handleUninstall(p.id, p.name)}
-                                className={`px-3 py-1 text-xs rounded ${currentTheme.subcardBg} hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 transition-colors`}
-                              >
-                                彻底卸载
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
                 {/* 网络代理与 GitHub 连通配置 */}
                 <div className={`space-y-3 pb-5 border-b ${currentTheme.border}`}>
@@ -2169,6 +2570,7 @@ export default function App(): JSX.Element {
           </div>
         </div>
       )}
+
     </div>
   )
 }

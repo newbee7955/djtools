@@ -102,6 +102,11 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(async () => {
+  // 0. 设置 Windows AppUserModelId，确保任务栏窗口与快捷方式正确关联并展示高清图标
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.doujiao.app')
+  }
+
   // 1. 初始化并应用网络代理策略（默认跟随系统代理，可关闭直连或自定义）
   await ProxyManager.getInstance().init()
 
@@ -110,10 +115,14 @@ app.whenReady().then(async () => {
 
   mainWindow = createWindow()
 
-  // 3. 初始化系统托盘（支持点击/双击唤醒及右键退出菜单）
+  // 3. 初始化全局屏幕截图服务 (注册全局快捷键 Alt+Shift+A 与 Ctrl+Alt+A)
+  const { ScreenshotService } = await import('./services/screenshot-service')
+  ScreenshotService.getInstance().init(mainWindow)
+
+  // 4. 初始化系统托盘（支持点击/双击唤醒及右键退出菜单）
   AppTrayManager.getInstance().init(mainWindow)
 
-  // 4. 启动主程序静默更新检测（延时 4 秒，不阻塞首屏）
+  // 5. 启动主程序静默更新检测（延时 4 秒，不阻塞首屏）
   const { AppUpdateService } = await import('./services/app-update-service')
   AppUpdateService.getInstance().startAutoCheck((info) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
@@ -147,7 +156,11 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.on('before-quit', () => {
+app.on('before-quit', async () => {
+  try {
+    const { ScreenshotService } = await import('./services/screenshot-service')
+    ScreenshotService.getInstance().unregisterGlobalShortcuts()
+  } catch {}
   AppTrayManager.getInstance().setQuitting(true)
   PluginViewContainerManager.getInstance().destroyAll()
   AppTrayManager.getInstance().destroy()

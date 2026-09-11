@@ -7,7 +7,8 @@ import {
   isEncryptedContent,
   isMasterPasswordSet,
   setupMasterPassword,
-  verifyMasterPassword
+  verifyMasterPassword,
+  removeMasterPassword
 } from './lib/crypto'
 
 interface Note {
@@ -78,30 +79,44 @@ export default function App(): JSX.Element {
   const [showDirectoryModal, setShowDirectoryModal] = useState(false)
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false)
 
-  // 全局密码加密与访问状态
+  // 全局密码加密与会话状态
   const masterPasswordInSession = useRef<string | null>(null)
-  const sessionPasswordsRef = useRef<Record<string, string>>({})
-  const [sessionPasswords, setSessionPasswords] = useState<Record<string, string>>({})
+  const pendingEncryptNoteIdRef = useRef<string | null>(null)
+  const [isMasterUnlocked, setIsMasterUnlocked] = useState<boolean>(false)
   const [hasMasterPass, setHasMasterPass] = useState<boolean>(() => isMasterPasswordSet())
   const [unlockPassword, setUnlockPassword] = useState('')
   const [unlockError, setUnlockError] = useState<string | null>(null)
   const [showUnlockPassword, setShowUnlockPassword] = useState(false)
   const [isUnlocking, setIsUnlocking] = useState(false)
 
-  // 开启加密弹窗状态
-  const [showEncryptModal, setShowEncryptModal] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [encryptModalError, setEncryptModalError] = useState<string | null>(null)
-  const [showNewPassword, setShowNewPassword] = useState(false)
+  // 全局主密码首次设置弹窗
+  const [showMasterSetupModal, setShowMasterSetupModal] = useState(false)
+  const [masterSetupPassword, setMasterSetupPassword] = useState('')
+  const [masterSetupConfirm, setMasterSetupConfirm] = useState('')
+  const [masterSetupError, setMasterSetupError] = useState<string | null>(null)
+  const [showMasterSetupEye, setShowMasterSetupEye] = useState(false)
 
-  // 安全管理弹窗状态（解除加密 / 修改密码）
+  // 全局记事本解锁弹窗
+  const [showGlobalUnlockModal, setShowGlobalUnlockModal] = useState(false)
+  const [globalUnlockInput, setGlobalUnlockInput] = useState('')
+  const [globalUnlockError, setGlobalUnlockError] = useState<string | null>(null)
+  const [showGlobalUnlockEye, setShowGlobalUnlockEye] = useState(false)
+  const [isGlobalUnlocking, setIsGlobalUnlocking] = useState(false)
+
+  // 全局安全管理弹窗状态（修改密码 / 清除密码 / 偏好策略）
   const [showSecuritySettingsModal, setShowSecuritySettingsModal] = useState(false)
-  const [securityTab, setSecurityTab] = useState<'remove' | 'change'>('remove')
+  const [securityTab, setSecurityTab] = useState<'change' | 'clear' | 'policy'>('change')
   const [currentPassInput, setCurrentPassInput] = useState('')
   const [newPassInput, setNewPassInput] = useState('')
   const [confirmPassInput, setConfirmPassInput] = useState('')
   const [securityModalError, setSecurityModalError] = useState<string | null>(null)
+  const [autoLockOnSwitch, setAutoLockOnSwitch] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('doujiao_notepad_autolock') === 'true'
+    } catch {
+      return false
+    }
+  })
 
   // 删除加锁/加密便签二次密码验证弹窗状态
   const [deleteModalTarget, setDeleteModalTarget] = useState<{
@@ -156,9 +171,9 @@ export default function App(): JSX.Element {
             const encrypted = isEncryptedContent(content)
             let finalContent = content
             let locked = encrypted
-            if (encrypted && sessionPasswordsRef.current[f.relativePath]) {
+            if (encrypted && masterPasswordInSession.current) {
               try {
-                finalContent = await decryptNoteContent(content, sessionPasswordsRef.current[f.relativePath])
+                finalContent = await decryptNoteContent(content, masterPasswordInSession.current)
                 locked = false
               } catch {
                 locked = true
@@ -186,9 +201,9 @@ export default function App(): JSX.Element {
             const encrypted = isEncryptedContent(content)
             let finalContent = content
             let locked = encrypted
-            if (encrypted && sessionPasswordsRef.current[f.relativePath]) {
+            if (encrypted && masterPasswordInSession.current) {
               try {
-                finalContent = await decryptNoteContent(content, sessionPasswordsRef.current[f.relativePath])
+                finalContent = await decryptNoteContent(content, masterPasswordInSession.current)
                 locked = false
               } catch {
                 locked = true
@@ -221,8 +236,13 @@ export default function App(): JSX.Element {
   }
 
   const handleNavigateDir = (subDir: string) => {
-    if (activeNote && activeNote.isEncrypted && !activeNote.isLocked) {
-      handleLockNote(activeNote.id, true)
+    if (autoLockOnSwitch && isMasterUnlocked) {
+      handleLockAll(true)
+    } else if (activeNote && activeNote.isEncrypted && !activeNote.isLocked && masterPasswordInSession.current) {
+      const targetName = activeNote.fileName || `${(activeNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
+      encryptNoteContent(activeNote.content, masterPasswordInSession.current).then((c) => {
+        getSDK()?.workspace?.writeFile?.(targetName, c, 'notepad')
+      }).catch(() => {})
     }
     setCurrentDir(subDir)
     loadWorkspace(subDir)
@@ -276,6 +296,15 @@ export default function App(): JSX.Element {
     )
 
     if (hasEncryptedInFolder) {
+      if (isMasterUnlocked && masterPasswordInSession.current) {
+        if (!window.confirm(`警告：文件夹 "${folderName}" 内包含加密便签。删除将彻底抹除该文件夹下所有文件，确定要删除吗？`)) {
+          return
+        }
+        await executeDeleteFolder(folderRelPath, folderName)
+        showToast(`已删除文件夹「${folderName}」🗑️`)
+        return
+      }
+
       setDeleteModalTarget({
         type: 'folder',
         id: folderRelPath,
@@ -316,7 +345,7 @@ export default function App(): JSX.Element {
           const targetName = activeNote.fileName || `${(activeNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
           let contentToWrite = activeNote.content
           if (activeNote.isEncrypted) {
-            const pass = masterPasswordInSession.current || sessionPasswordsRef.current[activeNote.id]
+            const pass = masterPasswordInSession.current
             if (!pass) return
             contentToWrite = await encryptNoteContent(activeNote.content, pass)
           }
@@ -346,7 +375,7 @@ export default function App(): JSX.Element {
           const targetName = activeNote.fileName || `${(activeNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
           let contentToWrite = activeNote.content
           if (activeNote.isEncrypted) {
-            const pass = masterPasswordInSession.current || sessionPasswordsRef.current[activeNote.id]
+            const pass = masterPasswordInSession.current
             if (!pass) return
             contentToWrite = await encryptNoteContent(activeNote.content, pass)
           }
@@ -437,55 +466,54 @@ export default function App(): JSX.Element {
     }
   }
 
-  // 立即锁定加密便签并密文存盘
-  const handleLockNote = async (targetId?: string, silent = false) => {
-    const id = targetId || activeNote?.id
-    if (!id) return
-    const note = notes.find((n) => n.id === id)
-    if (!note || !note.isEncrypted || note.isLocked) return
+  // 立即锁定全部加密便签并密文存盘，退出解锁会话
+  const handleLockAll = async (silent = false) => {
+    const pass = masterPasswordInSession.current
+    const sdk = getSDK()
 
-    const pass = masterPasswordInSession.current || sessionPasswordsRef.current[id]
-    let cipher = note.content
-    if (pass) {
-      try {
-        cipher = await encryptNoteContent(note.content, pass)
-        const sdk = getSDK()
-        if (sdk?.workspace) {
-          const targetName = note.fileName || `${(note.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
-          await sdk.workspace.writeFile(targetName, cipher, 'notepad')
-          if (sdk.workspace.history) {
-            await sdk.workspace.history.saveSnapshot('notepad', targetName, cipher, 'auto', '锁定存盘')
+    const updated = await Promise.all(
+      notes.map(async (n) => {
+        if (n.isEncrypted && !n.isLocked) {
+          if (pass) {
+            try {
+              const cipher = await encryptNoteContent(n.content, pass)
+              const targetName = n.fileName || `${(n.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
+              if (sdk?.workspace) {
+                await sdk.workspace.writeFile(targetName, cipher, 'notepad')
+                if (sdk.workspace.history) {
+                  await sdk.workspace.history.saveSnapshot('notepad', targetName, cipher, 'auto', '锁定存盘')
+                }
+              }
+              return { ...n, content: cipher, isLocked: true }
+            } catch (err) {
+              console.error('锁定加密存盘失败:', err)
+              return { ...n, isLocked: true }
+            }
           }
+          return { ...n, isLocked: true }
         }
-      } catch (err) {
-        console.error('锁定加密存盘失败:', err)
-      }
-    }
-
-    delete sessionPasswordsRef.current[id]
-    setSessionPasswords((prev) => {
-      const copy = { ...prev }
-      delete copy[id]
-      return copy
-    })
-
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id
-          ? { ...n, content: cipher, isLocked: true }
-          : n
-      )
+        return n
+      })
     )
+
+    setNotes(updated)
+    masterPasswordInSession.current = null
+    setIsMasterUnlocked(false)
     if (!silent) {
-      showToast('便签已锁定 🔒')
+      showToast('已锁定全部加密便签 🔒')
     }
+  }
+
+  // 立即锁定当前加密便签并密文存盘
+  const handleLockNote = async (targetId?: string, silent = false) => {
+    await handleLockAll(silent)
   }
 
   // 从外部磁盘打开文件
   const handleOpenFile = async () => {
     try {
-      if (activeNote && activeNote.isEncrypted && !activeNote.isLocked) {
-        await handleLockNote(activeNote.id, true)
+      if (autoLockOnSwitch && isMasterUnlocked) {
+        await handleLockAll(true)
       }
       const sdk = getSDK()
       if (sdk?.workspace?.selectFileToOpen) {
@@ -493,12 +521,23 @@ export default function App(): JSX.Element {
         if (!res.canceled && res.content !== undefined && res.fileName) {
           const title = res.fileName.replace(/\.(txt|log|md)$/i, '')
           const encrypted = isEncryptedContent(res.content)
+          let finalContent = res.content
+          let locked = encrypted
+          if (encrypted && masterPasswordInSession.current) {
+            try {
+              finalContent = await decryptNoteContent(res.content, masterPasswordInSession.current)
+              locked = false
+            } catch {
+              locked = true
+            }
+          }
+
           const existing = notes.find((n) => n.title === title || n.fileName === res.fileName)
           if (existing) {
             if (existing.isEncrypted && existing.isLocked) {
-              showToast('该文件已在列表中，请先输入密码解锁')
+              showToast('该文件已在列表中，请先输入全局密码解锁')
             } else {
-              updateNote('content', res.content)
+              updateNote('content', finalContent)
               showToast(`已载入文件: ${res.fileName}`)
             }
             setActiveNoteId(existing.id)
@@ -507,11 +546,11 @@ export default function App(): JSX.Element {
               id: res.fileName,
               fileName: res.fileName,
               title,
-              content: res.content,
+              content: finalContent,
               pinned: false,
               updatedAt: Date.now(),
               isEncrypted: encrypted,
-              isLocked: encrypted
+              isLocked: locked
             }
             if (sdk.workspace.writeFile) {
               await sdk.workspace.writeFile(res.fileName, res.content, 'notepad')
@@ -544,12 +583,36 @@ export default function App(): JSX.Element {
       })
   }, [notes, searchQuery])
 
-  // 选择切换便签（若当前便签已解锁且开启了加密，切换离开时自动加密存盘并重新上锁）
+  // 选择切换便签（全局解锁态下无缝浏览编辑，不频繁重新锁闭）
   const handleSelectNote = async (id: string) => {
     if (id === activeNoteId) return
 
-    if (activeNote && activeNote.isEncrypted && !activeNote.isLocked) {
-      await handleLockNote(activeNote.id, true)
+    // 如果开启了极端隐私策略（切换便签即锁），则锁定全部
+    if (autoLockOnSwitch && isMasterUnlocked) {
+      await handleLockAll(true)
+    } else {
+      // 保持会话解锁态：自动将当前便签改动加密写盘
+      if (activeNote && activeNote.isEncrypted && !activeNote.isLocked && masterPasswordInSession.current) {
+        try {
+          const cipher = await encryptNoteContent(activeNote.content, masterPasswordInSession.current)
+          const sdk = getSDK()
+          if (sdk?.workspace) {
+            const targetName = activeNote.fileName || `${(activeNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
+            await sdk.workspace.writeFile(targetName, cipher, 'notepad')
+          }
+        } catch {}
+      }
+    }
+
+    // 目标便签若已加密但处于加锁态，且当前会话已有全局主密码，自动予以平滑解密
+    const targetNote = notes.find((n) => n.id === id)
+    if (targetNote && targetNote.isEncrypted && targetNote.isLocked && masterPasswordInSession.current) {
+      try {
+        const plain = await decryptNoteContent(targetNote.content, masterPasswordInSession.current)
+        setNotes((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, content: plain, isLocked: false } : n))
+        )
+      } catch {}
     }
 
     setActiveNoteId(id)
@@ -557,10 +620,16 @@ export default function App(): JSX.Element {
     setUnlockError(null)
   }
 
-  // 新建笔记（支持在当前子目录新建，离开加密便签时自动上锁）
+  // 新建笔记（支持在当前子目录新建）
   const handleNewNote = async () => {
-    if (activeNote && activeNote.isEncrypted && !activeNote.isLocked) {
-      await handleLockNote(activeNote.id, true)
+    if (autoLockOnSwitch && isMasterUnlocked) {
+      await handleLockAll(true)
+    } else if (activeNote && activeNote.isEncrypted && !activeNote.isLocked && masterPasswordInSession.current) {
+      const targetName = activeNote.fileName || `${(activeNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
+      try {
+        const cipher = await encryptNoteContent(activeNote.content, masterPasswordInSession.current)
+        await getSDK()?.workspace?.writeFile?.(targetName, cipher, 'notepad')
+      } catch {}
     }
     let baseName = '新便签'
     let title = baseName
@@ -618,18 +687,6 @@ export default function App(): JSX.Element {
           console.warn('重命名文件失败:', err)
         }
 
-        // 迁移 session 密码映射
-        if (sessionPasswordsRef.current[activeNote.id]) {
-          const pass = sessionPasswordsRef.current[activeNote.id]
-          delete sessionPasswordsRef.current[activeNote.id]
-          sessionPasswordsRef.current[newFileName] = pass
-          setSessionPasswords((prev) => {
-            const copy = { ...prev }
-            delete copy[activeNote.id]
-            copy[newFileName] = pass
-            return copy
-          })
-        }
       }
 
       setNotes((prev) =>
@@ -683,13 +740,6 @@ export default function App(): JSX.Element {
       }
     }
 
-    delete sessionPasswordsRef.current[id]
-    setSessionPasswords((prev) => {
-      const copy = { ...prev }
-      delete copy[id]
-      return copy
-    })
-
     const remaining = notes.filter((n) => n.id !== id)
     setNotes(remaining)
     if (activeNoteId === id) {
@@ -703,8 +753,18 @@ export default function App(): JSX.Element {
     const noteToDelete = notes.find((n) => n.id === id)
     if (!noteToDelete) return
 
-    // 如果文件已加锁/加密保护，删除必须输入密码
+    // 如果文件已加锁/加密保护
     if (noteToDelete.isEncrypted) {
+      if (isMasterUnlocked && masterPasswordInSession.current) {
+        const title = noteToDelete.title || noteToDelete.fileName || '该加密便签'
+        if (!window.confirm(`确定要永久删除加密便签 "${title}" 吗？此操作将彻底从磁盘抹除物理文件且无法撤销。`)) {
+          return
+        }
+        await executeDeleteNote(id)
+        showToast(`已删除加密便签「${title}」🗑️`)
+        return
+      }
+
       setDeleteModalTarget({
         type: 'note',
         id,
@@ -779,7 +839,88 @@ export default function App(): JSX.Element {
     }
   }
 
-  // 解锁加密便签
+  // 使用全局主密码解锁整个记事本（批量解密所有受保护便签）
+  const handleUnlockWithMasterPassword = async (pass: string): Promise<boolean> => {
+    const trimmed = pass.trim()
+    if (!trimmed) {
+      return false
+    }
+
+    let isValid = false
+    if (isMasterPasswordSet()) {
+      isValid = await verifyMasterPassword(trimmed)
+    } else {
+      await setupMasterPassword(trimmed)
+      setHasMasterPass(true)
+      isValid = true
+    }
+
+    // 容错：若校验未通过，尝试用输入密码解密当前活动便签
+    if (!isValid && activeNote && isEncryptedContent(activeNote.content)) {
+      try {
+        await decryptNoteContent(activeNote.content, trimmed)
+        isValid = true
+        await setupMasterPassword(trimmed)
+        setHasMasterPass(true)
+      } catch {}
+    }
+
+    if (!isValid) {
+      return false
+    }
+
+    masterPasswordInSession.current = trimmed
+    setIsMasterUnlocked(true)
+
+    // 批量解密内存中当前所有已加锁加密便签
+    const updated = await Promise.all(
+      notes.map(async (n) => {
+        if (n.isEncrypted && n.isLocked) {
+          try {
+            const plain = await decryptNoteContent(n.content, trimmed)
+            return { ...n, content: plain, isLocked: false }
+          } catch {
+            return n
+          }
+        }
+        return n
+      })
+    )
+    setNotes(updated)
+
+    // 若有等待加密的便签挂起
+    if (pendingEncryptNoteIdRef.current) {
+      const targetId = pendingEncryptNoteIdRef.current
+      pendingEncryptNoteIdRef.current = null
+      const targetNote = updated.find((n) => n.id === targetId)
+      if (targetNote && !targetNote.isEncrypted) {
+        try {
+          const cipher = await encryptNoteContent(targetNote.content, trimmed)
+          const sdk = getSDK()
+          if (sdk?.workspace) {
+            const targetName = targetNote.fileName || `${(targetNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
+            await sdk.workspace.writeFile(targetName, cipher, 'notepad')
+            if (sdk.workspace.history) {
+              await sdk.workspace.history.saveSnapshot('notepad', targetName, cipher, 'auto', '开启全局密码加密')
+            }
+          }
+          setNotes((prev) =>
+            prev.map((n) =>
+              n.id === targetId ? { ...n, isEncrypted: true, isLocked: false } : n
+            )
+          )
+          showToast(`已使用全局密码为「${targetNote.title}」开启加密 🔒`)
+        } catch (err: any) {
+          console.error('开启加密失败:', err)
+        }
+      }
+    }
+
+    showToast('记事本已解锁 🔓')
+    return true
+  }
+
+  // 解锁当前便签（在便签锁定卡片中输入全局密码）
   const handleUnlockNote = async () => {
     if (!activeNote) return
     const pass = unlockPassword.trim()
@@ -789,127 +930,76 @@ export default function App(): JSX.Element {
     }
     setIsUnlocking(true)
     setUnlockError(null)
-    try {
-      const decrypted = await decryptNoteContent(activeNote.content, pass)
 
-      if (!isMasterPasswordSet()) {
-        await setupMasterPassword(pass)
-        setHasMasterPass(true)
-      } else {
-        const ok = await verifyMasterPassword(pass)
-        if (!ok) {
-          await setupMasterPassword(pass)
-          setHasMasterPass(true)
-        }
-      }
-
-      masterPasswordInSession.current = pass
-      sessionPasswordsRef.current[activeNote.id] = pass
-      setSessionPasswords((prev) => ({ ...prev, [activeNote.id]: pass }))
-
-      setNotes((prev) =>
-        prev.map((n) =>
-          n.id === activeNote.id
-            ? { ...n, content: decrypted, isLocked: false }
-            : n
-        )
-      )
+    const ok = await handleUnlockWithMasterPassword(pass)
+    setIsUnlocking(false)
+    if (ok) {
       setUnlockPassword('')
-      showToast('便签已解锁 🔓')
-    } catch (err: any) {
-      setUnlockError('访问密码错误，无法解锁便签')
-    } finally {
-      setIsUnlocking(false)
-    }
-  }
-
-  // 开启加密保护
-  const handleEnableEncryption = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!activeNote) return
-
-    const masterConfigured = isMasterPasswordSet()
-    let passToUse = ''
-
-    if (!masterConfigured) {
-      if (!newPassword || newPassword.length < 4) {
-        setEncryptModalError('全局密码长度不能少于 4 位')
-        return
-      }
-      if (newPassword !== confirmPassword) {
-        setEncryptModalError('两次输入的密码不一致')
-        return
-      }
-      passToUse = newPassword
-      await setupMasterPassword(passToUse)
-      setHasMasterPass(true)
     } else {
-      if (!newPassword) {
-        setEncryptModalError('请输入已设置的全局访问密码')
-        return
-      }
-      const valid = await verifyMasterPassword(newPassword)
-      if (!valid) {
-        setEncryptModalError('全局访问密码错误')
-        return
-      }
-      passToUse = newPassword
-    }
-
-    try {
-      const cipher = await encryptNoteContent(activeNote.content, passToUse)
-      const sdk = getSDK()
-      if (sdk?.workspace) {
-        const targetName = activeNote.fileName || `${(activeNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
-        await sdk.workspace.writeFile(targetName, cipher, 'notepad')
-        if (sdk.workspace.history) {
-          await sdk.workspace.history.saveSnapshot('notepad', targetName, cipher, 'auto', '开启加密保护')
-        }
-      }
-
-      masterPasswordInSession.current = passToUse
-      sessionPasswordsRef.current[activeNote.id] = passToUse
-      setSessionPasswords((prev) => ({ ...prev, [activeNote.id]: passToUse }))
-
-      setNotes((prev) =>
-        prev.map((n) =>
-          n.id === activeNote.id
-            ? { ...n, isEncrypted: true, isLocked: false }
-            : n
-        )
-      )
-
-      setShowEncryptModal(false)
-      setNewPassword('')
-      setConfirmPassword('')
-      showToast('已为当前便签开启加密保护 🔒')
-    } catch (err: any) {
-      setEncryptModalError(`加密失败: ${err?.message || '未知错误'}`)
+      setUnlockError('全局访问密码错误，无法解锁便签')
     }
   }
 
-  // 解除加密保护
-  const handleRemoveEncryption = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // 为当前便签开启加密保护（统一使用全局主密码，已解锁时一键直接加密，无需重复输密）
+  const handleEnableEncryptionForActiveNote = async () => {
     if (!activeNote) return
 
-    if (!currentPassInput) {
-      setSecurityModalError('请输入全局访问密码')
+    // 1. 若尚未设置全局主密码：唤起全局主密码首次设置弹窗
+    if (!isMasterPasswordSet()) {
+      pendingEncryptNoteIdRef.current = activeNote.id
+      setMasterSetupPassword('')
+      setMasterSetupConfirm('')
+      setMasterSetupError(null)
+      setShowMasterSetupModal(true)
       return
     }
 
-    const isMasterValid = await verifyMasterPassword(currentPassInput)
-    if (!isMasterValid) {
-      setSecurityModalError('全局访问密码验证错误，无法解除加密')
+    // 2. 若已设置且当前会话已解锁：一键直接加密存盘，无需弹出任何密码输入框！
+    if (masterPasswordInSession.current) {
+      const pass = masterPasswordInSession.current
+      try {
+        const cipher = await encryptNoteContent(activeNote.content, pass)
+        const sdk = getSDK()
+        if (sdk?.workspace) {
+          const targetName = activeNote.fileName || `${(activeNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
+          await sdk.workspace.writeFile(targetName, cipher, 'notepad')
+          if (sdk.workspace.history) {
+            await sdk.workspace.history.saveSnapshot('notepad', targetName, cipher, 'auto', '开启全局密码加密')
+          }
+        }
+        setNotes((prev) =>
+          prev.map((n) =>
+            n.id === activeNote.id
+              ? { ...n, isEncrypted: true, isLocked: false }
+              : n
+          )
+        )
+        showToast('已使用全局主密码为此便签开启加密保护 🔒')
+      } catch (err: any) {
+        showToast('加密失败: ' + (err?.message || '未知错误'))
+      }
+      return
+    }
+
+    // 3. 若已设置但当前处于锁定状态：提示输入全局密码解锁并为当前便签开启加密
+    pendingEncryptNoteIdRef.current = activeNote.id
+    setGlobalUnlockInput('')
+    setGlobalUnlockError(null)
+    setShowGlobalUnlockModal(true)
+  }
+
+  // 解除当前便签加密保护（恢复为普通未加密文本）
+  const handleRemoveEncryptionForActiveNote = async () => {
+    if (!activeNote || !activeNote.isEncrypted) return
+    if (!window.confirm(`确定要解除便签「${activeNote.title}」的加密保护吗？\n解除后正文将以普通文本 .txt 文件形式存盘，无需密码即可查看。`)) {
       return
     }
 
     try {
       let plainText = activeNote.content
-      if (activeNote.isLocked) {
-        plainText = await decryptNoteContent(activeNote.content, currentPassInput)
+      if (activeNote.isLocked && masterPasswordInSession.current) {
+        plainText = await decryptNoteContent(activeNote.content, masterPasswordInSession.current)
       }
-
       const sdk = getSDK()
       if (sdk?.workspace) {
         const targetName = activeNote.fileName || `${(activeNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
@@ -918,14 +1008,6 @@ export default function App(): JSX.Element {
           await sdk.workspace.history.saveSnapshot('notepad', targetName, plainText, 'auto', '解除加密保护')
         }
       }
-
-      delete sessionPasswordsRef.current[activeNote.id]
-      setSessionPasswords((prev) => {
-        const copy = { ...prev }
-        delete copy[activeNote.id]
-        return copy
-      })
-
       setNotes((prev) =>
         prev.map((n) =>
           n.id === activeNote.id
@@ -933,12 +1015,81 @@ export default function App(): JSX.Element {
             : n
         )
       )
-
-      setShowSecuritySettingsModal(false)
-      setCurrentPassInput('')
       showToast('已解除便签加密，恢复为普通文本 🔓')
     } catch (err: any) {
-      setSecurityModalError(`解除加密失败: ${err?.message || '未知错误'}`)
+      showToast('解除加密失败: ' + (err?.message || '未知错误'))
+    }
+  }
+
+  // 首次设置全局主密码表单提交
+  const handleMasterSetupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const pass = masterSetupPassword.trim()
+    const conf = masterSetupConfirm.trim()
+
+    if (!pass || pass.length < 4) {
+      setMasterSetupError('全局主密码长度不能少于 4 位')
+      return
+    }
+    if (pass !== conf) {
+      setMasterSetupError('两次输入的密码不一致')
+      return
+    }
+
+    try {
+      await setupMasterPassword(pass)
+      setHasMasterPass(true)
+      masterPasswordInSession.current = pass
+      setIsMasterUnlocked(true)
+
+      // 若有待加密便签
+      if (pendingEncryptNoteIdRef.current) {
+        const targetId = pendingEncryptNoteIdRef.current
+        pendingEncryptNoteIdRef.current = null
+        const targetNote = notes.find((n) => n.id === targetId)
+        if (targetNote) {
+          const cipher = await encryptNoteContent(targetNote.content, pass)
+          const sdk = getSDK()
+          if (sdk?.workspace) {
+            const targetName = targetNote.fileName || `${(targetNote.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
+            await sdk.workspace.writeFile(targetName, cipher, 'notepad')
+            if (sdk.workspace.history) {
+              await sdk.workspace.history.saveSnapshot('notepad', targetName, cipher, 'auto', '设置全局主密码并加密')
+            }
+          }
+          setNotes((prev) =>
+            prev.map((n) =>
+              n.id === targetId ? { ...n, isEncrypted: true, isLocked: false } : n
+            )
+          )
+          showToast(`已设置全局主密码，并为「${targetNote.title}」开启加密 🔒`)
+        }
+      } else {
+        showToast('已成功设置记事本全局主密码 🔑')
+      }
+
+      setShowMasterSetupModal(false)
+      setMasterSetupPassword('')
+      setMasterSetupConfirm('')
+      setMasterSetupError(null)
+    } catch (err: any) {
+      setMasterSetupError(`设置密码失败: ${err?.message || '未知错误'}`)
+    }
+  }
+
+  // 全局解锁表单提交
+  const handleGlobalUnlockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsGlobalUnlocking(true)
+    setGlobalUnlockError(null)
+
+    const ok = await handleUnlockWithMasterPassword(globalUnlockInput)
+    setIsGlobalUnlocking(false)
+    if (ok) {
+      setShowGlobalUnlockModal(false)
+      setGlobalUnlockInput('')
+    } else {
+      setGlobalUnlockError('全局访问密码错误，无法解锁')
     }
   }
 
@@ -968,6 +1119,7 @@ export default function App(): JSX.Element {
       await setupMasterPassword(newPassInput)
       setHasMasterPass(true)
       masterPasswordInSession.current = newPassInput
+      setIsMasterUnlocked(true)
 
       // 2. 批量重新加密所有加密便签
       const sdk = getSDK()
@@ -999,15 +1151,11 @@ export default function App(): JSX.Element {
             }
           }
 
-          const isCurrentUnlocked = n.id === activeNote?.id && !n.isLocked
           updatedNotes.push({
             ...n,
-            content: isCurrentUnlocked ? plainText : newCipher,
-            isLocked: isCurrentUnlocked ? false : true
+            content: plainText,
+            isLocked: false
           })
-          if (isCurrentUnlocked) {
-            sessionPasswordsRef.current[n.id] = newPassInput
-          }
         } catch {
           updatedNotes.push(n)
         }
@@ -1022,6 +1170,80 @@ export default function App(): JSX.Element {
     } catch (err: any) {
       setSecurityModalError(`修改密码失败: ${err?.message || '未知错误'}`)
     }
+  }
+
+  // 清除全局主密码并全部解密为普通文本
+  const handleClearMasterPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentPassInput) {
+      setSecurityModalError('请输入当前全局访问密码')
+      return
+    }
+    const isValid = await verifyMasterPassword(currentPassInput)
+    if (!isValid) {
+      setSecurityModalError('当前全局访问密码错误')
+      return
+    }
+
+    if (!window.confirm('警告：此操作将清除全局主密码，并将所有已加密便签批量解密为普通明文文件存盘。是否确定继续？')) {
+      return
+    }
+
+    try {
+      const sdk = getSDK()
+      const updatedNotes: Note[] = []
+
+      for (const n of notes) {
+        if (!n.isEncrypted) {
+          updatedNotes.push(n)
+          continue
+        }
+
+        let plainText = n.content
+        if (n.isLocked) {
+          try {
+            plainText = await decryptNoteContent(n.content, currentPassInput)
+          } catch {
+            plainText = n.content
+          }
+        }
+
+        const targetName = n.fileName || `${(n.title || '便签').replace(/[\\/:*?"<>|]/g, '_')}.txt`
+        if (sdk?.workspace) {
+          await sdk.workspace.writeFile(targetName, plainText, 'notepad')
+          if (sdk.workspace.history) {
+            await sdk.workspace.history.saveSnapshot('notepad', targetName, plainText, 'auto', '清除全局密码批量解密')
+          }
+        }
+
+        updatedNotes.push({
+          ...n,
+          content: plainText,
+          isEncrypted: false,
+          isLocked: false
+        })
+      }
+
+      removeMasterPassword()
+      setHasMasterPass(false)
+      setIsMasterUnlocked(false)
+      masterPasswordInSession.current = null
+      setNotes(updatedNotes)
+      setShowSecuritySettingsModal(false)
+      setCurrentPassInput('')
+      showToast('已清除全局主密码，所有便签已还原为普通文本 🔓')
+    } catch (err: any) {
+      setSecurityModalError(`清除全局密码失败: ${err?.message || '未知错误'}`)
+    }
+  }
+
+  // 切换自动锁定策略
+  const handleToggleAutoLock = (enabled: boolean) => {
+    setAutoLockOnSwitch(enabled)
+    try {
+      localStorage.setItem('doujiao_notepad_autolock', String(enabled))
+    } catch {}
+    showToast(enabled ? '已开启切换便签时自动锁定' : '已关闭切换自动锁定（保持会话解锁）')
   }
 
   // 复制内容
@@ -1087,43 +1309,101 @@ export default function App(): JSX.Element {
 
       {/* 左侧便签列表 */}
       <div className="w-72 min-w-72 bg-slate-950 border-r border-slate-800 flex flex-col h-full">
-        {/* 标题栏与新建/打开按钮 */}
-        <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🗒️</span>
-            <div>
-              <span className="font-semibold text-xs text-slate-200">轻便记事本</span>
-              <span className="text-[10px] ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
-                {notes.length} 条
-              </span>
+        {/* 标题栏与新建/打开/全局锁按钮 */}
+        <div className="p-3 border-b border-slate-800 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xl">🗒️</span>
+              <div>
+                <span className="font-semibold text-xs text-slate-200">轻便记事本</span>
+                <span className="text-[10px] ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
+                  {notes.length} 条
+                </span>
+              </div>
             </div>
+
+            {/* 全局主密码锁状态与控制 */}
+            {!hasMasterPass ? (
+              <button
+                onClick={() => {
+                  setMasterSetupPassword('')
+                  setMasterSetupConfirm('')
+                  setMasterSetupError(null)
+                  setShowMasterSetupModal(true)
+                }}
+                className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 text-[10px] flex items-center gap-1 transition-colors"
+                title="设置记事本全局主密码（只需设置一次，全部加密便签通用）"
+              >
+                <span>🔐</span>
+                <span>设置全局密码</span>
+              </button>
+            ) : isMasterUnlocked ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleLockAll()}
+                  className="px-2 py-0.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] flex items-center gap-1 transition-colors font-medium"
+                  title="记事本已解锁，点击一键锁定全部加密便签"
+                >
+                  <span>🔓</span>
+                  <span>已解锁 (锁定全部)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSecurityTab('change')
+                    setCurrentPassInput('')
+                    setNewPassInput('')
+                    setConfirmPassInput('')
+                    setSecurityModalError(null)
+                    setShowSecuritySettingsModal(true)
+                  }}
+                  className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 text-[10px] transition-colors"
+                  title="全局密码管理 (修改密码 / 清除密码 / 策略)"
+                >
+                  ⚙️
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setGlobalUnlockInput('')
+                  setGlobalUnlockError(null)
+                  setShowGlobalUnlockModal(true)
+                }}
+                className="px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] flex items-center gap-1 transition-colors font-medium"
+                title="记事本已锁定，点击输入全局密码解锁全部加密便签"
+              >
+                <span>🔒</span>
+                <span>已加锁 (点击解锁)</span>
+              </button>
+            )}
           </div>
+
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
                 setNewFolderName('')
                 setShowNewFolderModal(true)
               }}
-              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1 transition-colors"
+              className="flex-1 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center justify-center gap-1 transition-colors"
               title="在当前位置新建文件夹"
             >
               <span>📁+</span>
-              <span>目录</span>
+              <span>新建目录</span>
             </button>
             <button
               onClick={handleOpenFile}
-              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1 transition-colors"
+              className="flex-1 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center justify-center gap-1 transition-colors"
               title="从外部磁盘打开文本文件..."
             >
               <span>📂 打开</span>
             </button>
             <button
               onClick={handleNewNote}
-              className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs flex items-center gap-1 shadow transition-colors font-medium"
+              className="flex-1 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs flex items-center justify-center gap-1 shadow transition-colors font-medium"
               title="新建便签"
             >
               <span>+</span>
-              <span>新建</span>
+              <span>新建便签</span>
             </button>
           </div>
         </div>
@@ -1164,7 +1444,7 @@ export default function App(): JSX.Element {
                 setNewFolderName('')
                 setShowNewFolderModal(true)
               }}
-              className="py-1 rounded bg-amber-600 hover:bg-amber-500 text-white text-[10px] transition-colors flex items-center justify-center gap-1 font-medium shadow-xs"
+              className="py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] transition-colors flex items-center justify-center gap-1"
               title="在当前工作目录下新建文件夹"
             >
               <span>📁+ 新建目录</span>
@@ -1442,30 +1722,42 @@ export default function App(): JSX.Element {
                   activeNote.isLocked ? (
                     <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 text-white text-xs font-medium shadow-xs">
                       <span>🔒</span>
-                      <span>已锁定</span>
+                      <span>已加锁</span>
                     </div>
                   ) : (
                     <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-xs shadow-xs">
-                      <button
-                        onClick={() => handleLockNote()}
-                        className="px-2 py-0.5 rounded text-[11px] text-amber-600 hover:bg-slate-900 font-medium transition-colors flex items-center gap-1"
-                        title="立即锁定当前便签 (重新查看需输入密码)"
-                      >
+                      <span className="px-2 py-0.5 text-[11px] text-amber-500 font-medium flex items-center gap-1 select-none">
                         <span>🔒</span>
-                        <span>立即上锁</span>
+                        <span>加密保护</span>
+                      </span>
+                      <div className="w-[1px] h-3 bg-slate-700 mx-0.5" />
+                      <button
+                        onClick={handleRemoveEncryptionForActiveNote}
+                        className="px-2 py-0.5 rounded text-[11px] text-slate-300 hover:text-rose-400 hover:bg-slate-900 transition-colors"
+                        title="解除此便签的加密保护（恢复为普通未加密文本）"
+                      >
+                        🔓 解除加密
+                      </button>
+                      <div className="w-[1px] h-3 bg-slate-700 mx-0.5" />
+                      <button
+                        onClick={() => handleLockAll()}
+                        className="px-2 py-0.5 rounded text-[11px] text-amber-500 hover:bg-slate-900 font-medium transition-colors"
+                        title="立即锁定全部加密便签"
+                      >
+                        🔒 锁定全部
                       </button>
                       <div className="w-[1px] h-3 bg-slate-700 mx-0.5" />
                       <button
                         onClick={() => {
-                          setSecurityTab('remove')
+                          setSecurityTab('change')
                           setCurrentPassInput('')
                           setNewPassInput('')
                           setConfirmPassInput('')
                           setSecurityModalError(null)
                           setShowSecuritySettingsModal(true)
                         }}
-                        className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-900 transition-colors"
-                        title="加密设置 (修改全局密码 / 解除加密)"
+                        className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-900 transition-colors"
+                        title="全局密码管理 (修改密码 / 清除密码 / 策略)"
                       >
                         ⚙️
                       </button>
@@ -1473,14 +1765,9 @@ export default function App(): JSX.Element {
                   )
                 ) : (
                   <button
-                    onClick={() => {
-                      setNewPassword('')
-                      setConfirmPassword('')
-                      setEncryptModalError(null)
-                      setShowEncryptModal(true)
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-700 hover:text-slate-900 border border-slate-700 text-xs flex items-center gap-1.5 font-medium transition-colors shadow-xs"
-                    title={hasMasterPass ? "使用全局密码加密此便签" : "设置全局密码并开启加密保护"}
+                    onClick={handleEnableEncryptionForActiveNote}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs flex items-center gap-1.5 font-medium transition-colors shadow-xs"
+                    title={hasMasterPass ? "使用记事本全局主密码为此便签开启加密" : "设置全局密码并开启加密保护"}
                   >
                     <span>🔒</span>
                     <span>开启加密</span>
@@ -1540,9 +1827,9 @@ export default function App(): JSX.Element {
                     🔒
                   </div>
                   <div className="space-y-1.5">
-                    <h3 className="text-base font-bold text-slate-900 tracking-wide">便签已加密锁定</h3>
+                    <h3 className="text-base font-bold text-slate-900 tracking-wide">便签已受全局密码保护</h3>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      此便签「<span className="text-amber-600 font-medium">{activeNote.title}</span>」已启用加密保护，请输入全局访问密码解锁查看。
+                      便签「<span className="text-amber-600 font-medium">{activeNote.title}</span>」已加锁。输入全局主密码即可一键解锁记事本全部加密便签。
                     </p>
                   </div>
 
@@ -1598,7 +1885,7 @@ export default function App(): JSX.Element {
                       ) : (
                         <>
                           <span>🔓</span>
-                          <span>解锁并查看便签</span>
+                          <span>解锁记事本全部便签</span>
                         </>
                       )}
                     </button>
@@ -1812,19 +2099,24 @@ export default function App(): JSX.Element {
         </div>
       )}
 
-      {/* 开启密码加密弹窗 */}
-      {showEncryptModal && activeNote && (
+      {/* 首次设置全局主密码弹窗 */}
+      {showMasterSetupModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🔒</span>
-                <h3 className="font-bold text-slate-100 text-sm">
-                  {hasMasterPass ? '开启便签加密保护' : '设置全局密码并开启加密'}
-                </h3>
+                <span className="text-xl">🔑</span>
+                <h3 className="font-bold text-slate-100 text-sm">设置记事本全局主密码</h3>
               </div>
               <button
-                onClick={() => setShowEncryptModal(false)}
+                type="button"
+                onClick={() => {
+                  setShowMasterSetupModal(false)
+                  setMasterSetupPassword('')
+                  setMasterSetupConfirm('')
+                  setMasterSetupError(null)
+                  pendingEncryptNoteIdRef.current = null
+                }}
                 className="text-slate-400 hover:text-slate-200 text-sm p-1"
               >
                 ✕
@@ -1832,86 +2124,80 @@ export default function App(): JSX.Element {
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">
-              {hasMasterPass ? (
-                <>
-                  将为便签「<span className="text-amber-500 font-medium">{activeNote.title}</span>」开启加密保护。便签内容将使用全局密码通过 <span className="font-mono text-slate-300">AES-256-GCM</span> 强加密保存至外部磁盘文件。
-                </>
-              ) : (
-                <>
-                  首次开启加密，请设置记事本的<strong>全局访问密码</strong>。所有加密便签将统一使用此密码进行保护与解锁，请妥善保管。
-                </>
-              )}
+              记事本采用<strong>全局主密码机制</strong>。您只需设置一次，所有加密便签统一使用该密码保护；在会话中解锁一次，即可无缝查看和编辑所有加密便签。
             </p>
 
-            <form onSubmit={handleEnableEncryption} className="space-y-3.5">
+            <form onSubmit={handleMasterSetupSubmit} className="space-y-3.5">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-medium text-slate-400">
-                  {hasMasterPass ? '全局访问密码' : '设置全局访问密码'}
-                </label>
+                <label className="text-[11px] font-medium text-slate-400">设置全局主密码</label>
                 <div className="relative">
                   <input
-                    type={showNewPassword ? 'text' : 'password'}
+                    type={showMasterSetupEye ? 'text' : 'password'}
                     autoFocus
-                    value={newPassword}
+                    value={masterSetupPassword}
                     onChange={(e) => {
-                      setNewPassword(e.target.value)
-                      setEncryptModalError(null)
+                      setMasterSetupPassword(e.target.value)
+                      setMasterSetupError(null)
                     }}
-                    placeholder={hasMasterPass ? '请输入全局访问密码...' : '请输入全局密码（至少 4 位）...'}
+                    placeholder="请输入全局主密码（至少 4 位）..."
                     className="w-full pl-3 pr-10 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    onClick={() => setShowMasterSetupEye(!showMasterSetupEye)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
                     tabIndex={-1}
                   >
-                    {showNewPassword ? '🙈' : '👁️'}
+                    {showMasterSetupEye ? '🙈' : '👁️'}
                   </button>
                 </div>
               </div>
 
-              {!hasMasterPass && (
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-slate-400">确认全局密码</label>
-                  <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => {
-                      setConfirmPassword(e.target.value)
-                      setEncryptModalError(null)
-                    }}
-                    placeholder="请再次输入全局密码以确认..."
-                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-              )}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-slate-400">确认主密码</label>
+                <input
+                  type={showMasterSetupEye ? 'text' : 'password'}
+                  value={masterSetupConfirm}
+                  onChange={(e) => {
+                    setMasterSetupConfirm(e.target.value)
+                    setMasterSetupError(null)
+                  }}
+                  placeholder="请再次输入全局主密码..."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                />
+              </div>
 
-              {encryptModalError && (
-                <div className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+              {masterSetupError && (
+                <div className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                   <span>⚠️</span>
-                  <span>{encryptModalError}</span>
+                  <span>{masterSetupError}</span>
                 </div>
               )}
 
               <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-500 leading-relaxed">
-                💡 记事本采用全局主密码机制与 AES-256 本地硬件级强加密。若忘记密码，密文将无法还原，请务必牢记。
+                💡 本地硬件级 AES-256-GCM 强加密保护，密码仅保存在本地安全验证区。若遗忘密码将无法恢复密文，请妥善记牢！
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowEncryptModal(false)}
+                  onClick={() => {
+                    setShowMasterSetupModal(false)
+                    setMasterSetupPassword('')
+                    setMasterSetupConfirm('')
+                    setMasterSetupError(null)
+                    pendingEncryptNoteIdRef.current = null
+                  }}
                   className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  disabled={!newPassword || (!hasMasterPass && !confirmPassword)}
+                  disabled={!masterSetupPassword || !masterSetupConfirm}
                   className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-semibold shadow transition-colors"
                 >
-                  {hasMasterPass ? '确认开启加密' : '设置并开启加密'}
+                  确认设置
                 </button>
               </div>
             </form>
@@ -1919,16 +2205,103 @@ export default function App(): JSX.Element {
         </div>
       )}
 
-      {/* 便签加密管理弹窗（解除加密 / 修改全局密码） */}
-      {showSecuritySettingsModal && activeNote && (
+      {/* 解锁记事本全部便签弹窗 */}
+      {showGlobalUnlockModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🔓</span>
+                <h3 className="font-bold text-slate-100 text-sm">解锁记事本全部便签</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGlobalUnlockModal(false)
+                  setGlobalUnlockInput('')
+                  setGlobalUnlockError(null)
+                  pendingEncryptNoteIdRef.current = null
+                }}
+                className="text-slate-400 hover:text-slate-200 text-sm p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              输入记事本<strong>全局访问密码</strong>，即可一键解锁记事本内的全部加密便签，本次会话期间畅享查看与编辑。
+            </p>
+
+            <form onSubmit={handleGlobalUnlockSubmit} className="space-y-3.5">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-medium text-slate-400">全局访问密码</label>
+                <div className="relative">
+                  <input
+                    type={showGlobalUnlockEye ? 'text' : 'password'}
+                    autoFocus
+                    value={globalUnlockInput}
+                    onChange={(e) => {
+                      setGlobalUnlockInput(e.target.value)
+                      setGlobalUnlockError(null)
+                    }}
+                    placeholder="请输入全局访问密码..."
+                    className="w-full pl-3 pr-10 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowGlobalUnlockEye(!showGlobalUnlockEye)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+                    tabIndex={-1}
+                  >
+                    {showGlobalUnlockEye ? '🙈' : '👁️'}
+                  </button>
+                </div>
+              </div>
+
+              {globalUnlockError && (
+                <div className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <span>⚠️</span>
+                  <span>{globalUnlockError}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGlobalUnlockModal(false)
+                    setGlobalUnlockInput('')
+                    setGlobalUnlockError(null)
+                    pendingEncryptNoteIdRef.current = null
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={!globalUnlockInput || isGlobalUnlocking}
+                  className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-semibold shadow transition-colors"
+                >
+                  {isGlobalUnlocking ? '验证中...' : '确认解锁'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 记事本全局密码与安全管理弹窗 */}
+      {showSecuritySettingsModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl">⚙️</span>
-                <h3 className="font-bold text-slate-100 text-sm">记事本加密安全管理</h3>
+                <h3 className="font-bold text-slate-100 text-sm">记事本安全管理</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowSecuritySettingsModal(false)}
                 className="text-slate-400 hover:text-slate-200 text-sm p-1"
               >
@@ -1937,21 +2310,7 @@ export default function App(): JSX.Element {
             </div>
 
             {/* 选项卡切换 */}
-            <div className="grid grid-cols-2 p-1 bg-slate-800 rounded-xl border border-slate-700 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setSecurityTab('remove')
-                  setSecurityModalError(null)
-                }}
-                className={`py-1.5 rounded-lg font-medium transition-all ${
-                  securityTab === 'remove'
-                    ? 'bg-slate-900 text-amber-600 font-semibold shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-900'
-                }`}
-              >
-                解除当前加密
-              </button>
+            <div className="grid grid-cols-3 p-1 bg-slate-800 rounded-xl border border-slate-700 text-xs">
               <button
                 type="button"
                 onClick={() => {
@@ -1960,63 +2319,47 @@ export default function App(): JSX.Element {
                 }}
                 className={`py-1.5 rounded-lg font-medium transition-all ${
                   securityTab === 'change'
-                    ? 'bg-slate-900 text-amber-600 font-semibold shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-900'
+                    ? 'bg-slate-900 text-amber-500 font-semibold shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                修改全局密码
+                修改主密码
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSecurityTab('clear')
+                  setSecurityModalError(null)
+                }}
+                className={`py-1.5 rounded-lg font-medium transition-all ${
+                  securityTab === 'clear'
+                    ? 'bg-slate-900 text-amber-500 font-semibold shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                清除主密码
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSecurityTab('policy')
+                  setSecurityModalError(null)
+                }}
+                className={`py-1.5 rounded-lg font-medium transition-all ${
+                  securityTab === 'policy'
+                    ? 'bg-slate-900 text-amber-500 font-semibold shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                安全策略
               </button>
             </div>
 
-            {securityTab === 'remove' ? (
-              <form onSubmit={handleRemoveEncryption} className="space-y-3.5">
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  解除当前便签「<span className="text-amber-500 font-medium">{activeNote.title}</span>」的加密保护。解除后正文将以普通明文 <code className="text-amber-500 font-mono">.txt</code> 文件形式保存到磁盘，今后无需密码即可直接查看。
-                </p>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-medium text-slate-400">全局访问密码</label>
-                  <input
-                    type="password"
-                    autoFocus
-                    value={currentPassInput}
-                    onChange={(e) => {
-                      setCurrentPassInput(e.target.value)
-                      setSecurityModalError(null)
-                    }}
-                    placeholder="请输入记事本全局访问密码..."
-                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                {securityModalError && (
-                  <div className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                    <span>⚠️</span>
-                    <span>{securityModalError}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowSecuritySettingsModal(false)}
-                    className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!currentPassInput}
-                    className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-semibold shadow transition-colors"
-                  >
-                    确认解除加密
-                  </button>
-                </div>
-              </form>
-            ) : (
+            {/* 修改全局密码 */}
+            {securityTab === 'change' && (
               <form onSubmit={handleChangePassword} className="space-y-3.5">
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  修改记事本全局访问密码。修改成功后，所有已加密便签将统一自动使用新密码重新加密保存。
+                  修改记事本全局主密码。修改成功后，所有已加密便签将统一自动使用新密码重新加密保存。
                 </p>
 
                 <div className="space-y-1.5">
@@ -2063,7 +2406,7 @@ export default function App(): JSX.Element {
                 </div>
 
                 {securityModalError && (
-                  <div className="text-[11px] text-rose-600 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <div className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
                     <span>⚠️</span>
                     <span>{securityModalError}</span>
                   </div>
@@ -2086,6 +2429,105 @@ export default function App(): JSX.Element {
                   </button>
                 </div>
               </form>
+            )}
+
+            {/* 清除全局密码并全部解密 */}
+            {securityTab === 'clear' && (
+              <form onSubmit={handleClearMasterPassword} className="space-y-3.5">
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  清除全局主密码并将所有已加密便签<strong>批量解密为普通明文 .txt</strong> 文件存盘。后续打开记事本不再需要密码。
+                </p>
+
+                <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-400 leading-relaxed">
+                  ⚠️ 警告：此操作不可逆！解密后所有便签将以纯文本形式保存在外部磁盘上。
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-slate-400">当前全局访问密码</label>
+                  <input
+                    type="password"
+                    autoFocus
+                    value={currentPassInput}
+                    onChange={(e) => {
+                      setCurrentPassInput(e.target.value)
+                      setSecurityModalError(null)
+                    }}
+                    placeholder="请输入当前全局访问密码进行安全确认..."
+                    className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {securityModalError && (
+                  <div className="text-[11px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span>{securityModalError}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSecuritySettingsModal(false)}
+                    className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!currentPassInput}
+                    className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-semibold shadow transition-colors"
+                  >
+                    确认清除密码并批量解密
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* 安全锁定策略 */}
+            {securityTab === 'policy' && (
+              <div className="space-y-4">
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  自定义记事本的安全锁定行为，平衡日常便捷性与隐私防护需求。
+                </p>
+
+                <div className="p-3 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <div className="text-xs font-medium text-slate-200">切换便签时自动锁定</div>
+                    <div className="text-[11px] text-slate-400 leading-relaxed">
+                      {autoLockOnSwitch
+                        ? '已开启：每次点击切换查看其他便签时，立即重新上锁并清除内存密码。'
+                        : '已关闭（推荐）：解锁一次后，在当前会话中切换不同便签无缝查看，无需反复输入密码。'}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAutoLock(!autoLockOnSwitch)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      autoLockOnSwitch ? 'bg-amber-600' : 'bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        autoLockOnSwitch ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-500 leading-relaxed">
+                  💡 关闭自动锁定不会降低文件安全性：磁盘上的便签文件始终由 AES-256 硬件级强加密保存，且支持随时在顶部或工具栏一键「锁定全部」。
+                </div>
+
+                <div className="flex items-center justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSecuritySettingsModal(false)}
+                    className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 hover:text-white transition-colors"
+                  >
+                    完成
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -3,11 +3,11 @@
   "id": "clipboard-history",
   "publisher": "doujiao-official",
   "name": "剪贴板历史记录",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "系统剪贴板实时监听、文本与图片历史记录持久化、一键回写复制、常用置顶与快捷检索",
   "icon": "📋",
   "engines": {
-    "doujiao": ">=0.2.0 <0.3.0",
+    "doujiao": ">=0.2.0",
     "pluginApi": "^1.0.0"
   },
   "entrypoints": {

@@ -616,6 +616,43 @@ export const App: React.FC = () => {
   };
 
   // -------------------------------------------------------------
+  // 屏幕截图引擎 (支持划选截图与全屏直截，快捷键 Alt+Shift+A)
+  // -------------------------------------------------------------
+  const handleTriggerScreenshot = useCallback(
+    async (mode: 'snip' | 'fullscreen' = 'snip') => {
+      if (sdk?.screen?.capture) {
+        try {
+          const res = await sdk.screen.capture({ mode, hideWindow: true });
+          if (res?.success && res?.dataUrl) {
+            loadImageSource(res.dataUrl);
+            showToast('📸 屏幕截图已载入画布，并已同步复制到剪贴板！', 'success');
+          } else if (res?.error) {
+            showToast(`截图失败: ${res.error}`, 'error');
+          }
+        } catch (err: any) {
+          showToast(`截图异常: ${err?.message || '未知错误'}`, 'error');
+        }
+      } else {
+        showToast('当前环境未启用屏幕截图能力，请确保在豆角宿主桌面端中运行', 'info');
+      }
+    },
+    [sdk, loadImageSource]
+  );
+
+  // 监听宿主全局快捷键广播的截图事件
+  useEffect(() => {
+    if (sdk?.screen?.onCaptured) {
+      const cleanup = sdk.screen.onCaptured((res: any) => {
+        if (res?.success && res?.dataUrl) {
+          loadImageSource(res.dataUrl);
+          showToast('📸 屏幕截图已自动载入画布！', 'success');
+        }
+      });
+      return () => cleanup?.();
+    }
+  }, [sdk, loadImageSource]);
+
+  // -------------------------------------------------------------
   // 全局快捷键与剪贴板监听 (Ctrl+V, Ctrl+C, Ctrl+Z 等)
   // -------------------------------------------------------------
   useEffect(() => {
@@ -680,6 +717,13 @@ export const App: React.FC = () => {
         return;
       }
 
+      // 截图快捷键: Alt+Shift+A 或 Ctrl+Shift+A 或 Alt+A
+      if ((e.altKey || (isCtrlOrMeta && e.shiftKey)) && (e.key.toLowerCase() === 'a' || e.code === 'KeyA')) {
+        e.preventDefault();
+        handleTriggerScreenshot('snip');
+        return;
+      }
+
       // 空格键平移抓手支持
       if (e.code === 'Space') {
         isSpacePressedRef.current = true;
@@ -720,7 +764,7 @@ export const App: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [baseCanvas, handleUndo, handleRedo, loadImageSource, currentTool]);
+  }, [baseCanvas, handleUndo, handleRedo, loadImageSource, currentTool, handleTriggerScreenshot]);
 
   // -------------------------------------------------------------
   // 鼠标滚轮缩放控制
@@ -775,6 +819,7 @@ export const App: React.FC = () => {
         onApplyCrop={handleApplyCrop}
         onCancelCrop={handleCancelCrop}
         onClearWorkspace={handleClearWorkspace}
+        onScreenshot={handleTriggerScreenshot}
       />
 
       {/* 主工作视口 */}
@@ -809,22 +854,32 @@ export const App: React.FC = () => {
             </div>
             <h2 className="text-lg font-bold text-slate-100 mb-2">轻量图片编辑与标注</h2>
             <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              按下 <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-sky-300 font-mono">Ctrl + V</kbd> 快速粘贴剪贴板截图，或直接拖拽图片文件到此处
+              按下 <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-sky-300 font-mono">Alt + Shift + A</kbd> 或点击下方按钮快速屏幕截图，也可拖拽图片到此处
             </p>
 
-            <div className="flex items-center space-x-3 w-full">
+            <div className="flex flex-col space-y-2.5 w-full">
               <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium rounded-lg transition shadow flex items-center justify-center space-x-1"
+                onClick={() => handleTriggerScreenshot('snip')}
+                className="w-full py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white text-xs font-semibold rounded-lg transition shadow-lg shadow-sky-950/50 flex items-center justify-center space-x-2 border border-sky-400/30 active:scale-[0.99]"
               >
-                <span>📂 选择本地图片</span>
+                <span>📸 立即屏幕截图</span>
+                <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded text-sky-100 font-mono">Alt + Shift + A</span>
               </button>
-              <button
-                onClick={() => handleCreateBlankCanvas(1920, 1080)}
-                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700"
-              >
-                <span>📄 新建 1080P 画布</span>
-              </button>
+
+              <div className="flex items-center space-x-3 w-full">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700 flex items-center justify-center space-x-1"
+                >
+                  <span>📂 选择本地图片</span>
+                </button>
+                <button
+                  onClick={() => handleCreateBlankCanvas(1920, 1080)}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg transition border border-slate-700"
+                >
+                  <span>📄 新建 1080P 画布</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

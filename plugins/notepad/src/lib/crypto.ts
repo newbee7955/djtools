@@ -200,3 +200,12 @@ export async function verifyMasterPassword(password: string): Promise<boolean> {
   }
 }
 
+/**
+ * 清除全局主访问密码配置
+ */
+export function removeMasterPassword(): void {
+  try {
+    localStorage.removeItem(MASTER_VERIFIER_KEY)
+  } catch {}
+}
+

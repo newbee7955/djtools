@@ -8,9 +8,11 @@ export type CapabilityType =
   | 'browser.login'
   | 'browser.extract'
   | 'media.merge'
+  | 'media.convert'
   | 'clipboard.history'
   | 'samba.client'
   | 'lan.transfer'
+  | 'screen.capture'
   | 'ui.dialog';
 
 export interface NetworkCapability {
@@ -33,6 +35,10 @@ export interface MediaMergeCapability {
   capability: 'media.merge';
 }
 
+export interface MediaConvertCapability {
+  capability: 'media.convert';
+}
+
 export interface ClipboardCapability {
   capability: 'clipboard.history';
 }
@@ -45,14 +51,20 @@ export interface LanTransferCapability {
   capability: 'lan.transfer';
 }
 
+export interface ScreenCaptureCapability {
+  capability: 'screen.capture';
+}
+
 export type PluginCapability =
   | NetworkCapability
   | DownloadCapability
   | BrowserLoginCapability
   | MediaMergeCapability
+  | MediaConvertCapability
   | ClipboardCapability
   | SambaCapability
   | LanTransferCapability
+  | ScreenCaptureCapability
   | { capability: CapabilityType; [key: string]: any };
 
 export interface SambaConfig {
@@ -279,6 +291,64 @@ export interface WorkspaceGitCommitItem {
   message: string;
 }
 
+export interface ScreenCaptureOptions {
+  /** 截图时是否隐藏宿主主窗口 (默认 true) */
+  hideWindow?: boolean;
+  /** 截图模式: 'snip' (划选截图) | 'fullscreen' (全屏直截), 默认 'snip' */
+  mode?: 'snip' | 'fullscreen';
+}
+
+export interface ScreenCaptureResult {
+  success: boolean;
+  canceled?: boolean;
+  dataUrl?: string;
+  bounds?: { x: number; y: number; width: number; height: number };
+  error?: string;
+}
+
+export interface FFmpegConvertOptions {
+  inputPath: string;
+  outputPath: string;
+  format?: string;
+  startTime?: string | number;
+  duration?: string | number;
+  videoCodec?: string;
+  audioCodec?: string;
+  audioBitrate?: string;
+  videoBitrate?: string;
+  crf?: number;
+  scale?: string;
+  fps?: number;
+  isGif?: boolean;
+  extraArgs?: string[];
+}
+
+export interface FFmpegConvertProgress {
+  taskId: string;
+  percent: number;
+  timemark?: string;
+  fps?: number;
+  speed?: string;
+  bitrate?: string;
+  status: 'running' | 'completed' | 'failed' | 'canceled';
+  error?: string;
+  outputPath?: string;
+}
+
+export interface MediaProbeInfo {
+  format?: string;
+  duration?: number;
+  size?: number;
+  bitrate?: number;
+  width?: number;
+  height?: number;
+  videoCodec?: string;
+  fps?: number;
+  audioCodec?: string;
+  sampleRate?: number;
+  channels?: number;
+}
+
 /**
  * 宿主向沙箱环境注入的 SDK 核心门面
  */
@@ -357,6 +427,12 @@ export interface DoujiaoSDK {
   media?: {
     merge(options: { videoPath: string; audioPath: string; outputPath: string }): Promise<{ success: boolean; error?: string }>;
     checkFFmpeg(): Promise<{ installed: boolean; version?: string; path?: string }>;
+    convert(options: FFmpegConvertOptions): Promise<{ success: boolean; taskId: string; outputPath?: string; error?: string }>;
+    probe?(filePath: string): Promise<MediaProbeInfo>;
+    cancelConvert?(taskId: string): Promise<boolean>;
+    showItemInFolder?(localPath: string): Promise<boolean>;
+    openPath?(localPath: string): Promise<boolean>;
+    onProgress?(callback: (progress: FFmpegConvertProgress) => void): () => void;
   };
 
   /** Samba 文件系统管理能力 */
@@ -405,6 +481,12 @@ export interface DoujiaoSDK {
     getMessages(): Promise<LanTransferMessage[]>;
     clearMessages(): Promise<boolean>;
     onEvent(callback: (event: LanTransferEvent) => void): () => void;
+  };
+
+  /** 屏幕截图能力 */
+  screen?: {
+    capture(options?: ScreenCaptureOptions): Promise<ScreenCaptureResult>;
+    onCaptured(callback: (result: ScreenCaptureResult) => void): () => void;
   };
 
   /** UI 交互与通知 */

@@ -1,4 +1,4 @@
-﻿import { app, net } from 'electron'
+import { app, net } from 'electron'
 import { join, resolve } from 'path'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, createWriteStream } from 'fs'
 import { spawn } from 'child_process'
@@ -29,11 +29,7 @@ export interface AppUpdateConfig {
 }
 
 const GITHUB_VERSION_ENDPOINTS = [
-  'https://cdn.jsdelivr.net/gh/newbee7955/djtools@main/registry/app-version.json',
-  'https://fastly.jsdelivr.net/gh/newbee7955/djtools@main/registry/app-version.json',
-  'https://gcore.jsdelivr.net/gh/newbee7955/djtools@main/registry/app-version.json',
-  'https://raw.githubusercontent.com/newbee7955/djtools/main/registry/app-version.json',
-  'https://ghproxy.net/https://raw.githubusercontent.com/newbee7955/djtools/main/registry/app-version.json'
+  'https://raw.githubusercontent.com/newbee7955/djtools/main/registry/app-version.json'
 ]
 
 export class AppUpdateService {
@@ -168,8 +164,7 @@ export class AppUpdateService {
 
     const candidateUrls = [
       updateInfo.downloadUrl,
-      ...(updateInfo.fallbackUrls || []),
-      `https://ghproxy.net/${updateInfo.downloadUrl}`
+      ...(updateInfo.fallbackUrls || [])
     ].filter(Boolean)
 
     const targetInstaller = join(this.updateDir, `Doujiao-Setup-${updateInfo.latestVersion}.exe`)

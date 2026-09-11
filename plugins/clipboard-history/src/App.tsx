@@ -335,10 +335,10 @@ export default function App(): JSX.Element {
               <div
                 key={item.id}
                 onClick={() => setInspectItem(item)}
-                className={`group p-4 rounded-xl border text-xs cursor-pointer transition-all hover:shadow-lg ${
+                className={`group p-4 rounded-xl border text-xs cursor-pointer transition-all hover:shadow-md ${
                   item.pinned
-                    ? 'bg-slate-900/90 border-indigo-500/40 hover:border-indigo-500/60'
-                    : 'bg-slate-950/50 border-slate-800/80 hover:bg-slate-900/80 hover:border-slate-700'
+                    ? 'bg-slate-900/90 border-indigo-500/40 hover:border-indigo-500/60 shadow-sm shadow-indigo-500/5'
+                    : 'bg-slate-900/80 border-slate-800/80 hover:bg-slate-900 hover:border-slate-700'
                 }`}
               >
                 {/* 顶部元数据与快捷按钮 */}
@@ -380,7 +380,7 @@ export default function App(): JSX.Element {
                     {/* 一键回写复制按钮 */}
                     <button
                       onClick={(e) => handleCopy(item, e)}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 shadow ${
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1 shadow-sm ${
                         isJustCopied
                           ? 'bg-emerald-600 text-white'
                           : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
@@ -396,8 +396,8 @@ export default function App(): JSX.Element {
                       onClick={(e) => handleTogglePin(item.id, e)}
                       className={`p-1.5 rounded-lg border text-xs transition-colors ${
                         item.pinned
-                          ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
-                          : 'bg-slate-900 border-slate-800 text-slate-500 hover:text-slate-300'
+                          ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
+                          : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:bg-slate-700/60'
                       }`}
                       title={item.pinned ? '取消置顶' : '置顶此条目'}
                     >
@@ -407,7 +407,7 @@ export default function App(): JSX.Element {
                     {/* 删除按钮 */}
                     <button
                       onClick={(e) => handleDelete(item.id, e)}
-                      className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-500 hover:text-rose-400 hover:border-rose-800/40 text-xs transition-colors"
+                      className="p-1.5 rounded-lg bg-slate-800/60 border border-slate-700/60 text-slate-400 hover:text-rose-400 hover:border-rose-500/40 hover:bg-rose-500/10 text-xs transition-colors"
                       title="删除记录"
                     >
                       🗑️
@@ -417,7 +417,7 @@ export default function App(): JSX.Element {
 
                 {/* 内容预览 */}
                 {isImage ? (
-                  <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800/40 flex items-center justify-center max-h-48 overflow-hidden">
+                  <div className="bg-slate-800/40 p-2 rounded-lg border border-slate-700/40 flex items-center justify-center max-h-48 overflow-hidden">
                     <img
                       src={item.thumbnail || item.dataUrl}
                       alt={item.text}
@@ -426,7 +426,7 @@ export default function App(): JSX.Element {
                     />
                   </div>
                 ) : (
-                  <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800/40 font-mono text-xs text-slate-200 leading-relaxed max-h-28 overflow-hidden line-clamp-3 select-text whitespace-pre-wrap break-all">
+                  <div className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/40 font-mono text-xs text-slate-200 leading-relaxed max-h-28 overflow-hidden line-clamp-3 select-text whitespace-pre-wrap break-all">
                     {item.text}
                   </div>
                 )}

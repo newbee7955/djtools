@@ -27,40 +27,72 @@ const LIGHT_THEME_CSS = `
     background-color: #f8fafc !important;
   }
 
-  /* 面板、卡片与内容容器 */
+  /* 面板、卡片与内容容器：全面支持 95/90/80/70/60/50/40/30/20 等各类半透明度 */
   .bg-slate-900,
-  .bg-card {
-    background-color: #ffffff !important;
-  }
-
-  .bg-slate-800,
-  .bg-muted {
-    background-color: #f1f5f9 !important;
-  }
-
+  .bg-card,
   .bg-slate-950\\/95,
   .bg-slate-950\\/90,
+  .bg-slate-950\\/85,
   .bg-slate-950\\/80,
+  .bg-slate-950\\/70,
   .bg-slate-950\\/60,
+  .bg-slate-950\\/50,
   .bg-slate-950\\/40,
+  .bg-slate-950\\/30,
+  .bg-slate-950\\/20,
   .bg-slate-900\\/95,
   .bg-slate-900\\/90,
+  .bg-slate-900\\/85,
   .bg-slate-900\\/80,
+  .bg-slate-900\\/70,
   .bg-slate-900\\/60,
-  .bg-slate-900\\/40 {
+  .bg-slate-900\\/50,
+  .bg-slate-900\\/40,
+  .bg-slate-900\\/30,
+  .bg-slate-900\\/20 {
     background-color: #ffffff !important;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
   }
 
-  /* 边框线条 */
+  /* 次级内容/预览块/输入框容器：弱灰底色 */
+  .bg-slate-800,
+  .bg-slate-800\\/95,
+  .bg-slate-800\\/90,
+  .bg-slate-800\\/80,
+  .bg-slate-800\\/70,
+  .bg-slate-800\\/60,
+  .bg-slate-800\\/50,
+  .bg-slate-800\\/40,
+  .bg-slate-800\\/30,
+  .bg-slate-800\\/20,
+  .bg-muted {
+    background-color: #f1f5f9 !important;
+  }
+
+  /* 边框线条：覆盖各类透明度 */
   .border-slate-800,
   .border-slate-700,
+  .border-slate-600,
+  .border-slate-800\\/90,
   .border-slate-800\\/80,
+  .border-slate-800\\/70,
   .border-slate-800\\/60,
+  .border-slate-800\\/50,
   .border-slate-800\\/40,
+  .border-slate-700\\/90,
+  .border-slate-700\\/80,
+  .border-slate-700\\/70,
+  .border-slate-700\\/60,
   .border-slate-700\\/50,
+  .border-slate-700\\/40,
+  .border-slate-600\\/50,
   .border-border {
     border-color: #e2e8f0 !important;
+  }
+
+  /* 浮层半透明遮罩层保持半透明暗色，不被覆盖为纯白 */
+  .fixed.inset-0:not([class*="bg-white"]):not([class*="bg-slate-50"]) {
+    background-color: rgba(15, 23, 42, 0.55) !important;
   }
 
   /* 非彩色实心按钮的文字层级：全转为高对比深色 */
@@ -90,6 +122,17 @@ const LIGHT_THEME_CSS = `
   .text-slate-500,
   .text-gray-500 {
     color: #64748b !important;
+  }
+
+  /* 亮色模式下琥珀色按钮转为温暖活力的金橙渐变，杜绝暗沉泥色 */
+  button[class*="bg-amber-600"],
+  button[class*="bg-amber-700"] {
+    background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%) !important;
+    border-color: rgba(234, 88, 12, 0.4) !important;
+  }
+  button[class*="bg-amber-600"]:hover,
+  button[class*="bg-amber-700"]:hover {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
   }
 
   /* 实心彩色按钮及其子元素文字保持纯白高对比 */
@@ -406,6 +449,7 @@ export class PluginViewContainerManager {
 
   private sidebarWidth: number = 240
   private rightDrawerWidth: number = 0
+  private leftOverlayWidth: number = 0
 
   public setSidebarWidth(width: number): void {
     if (typeof width === 'number' && width > 0) {
@@ -421,16 +465,22 @@ export class PluginViewContainerManager {
     }
   }
 
+  public setLeftOverlayWidth(_width: number): void {
+    // 更多插件现已升级为完全悬浮在插件上方的浮动窗口，不再挤压或挪动主插件视口
+    this.leftOverlayWidth = 0
+  }
+
   private updateViewBounds(): void {
     if (!this.mainWindow || !this.activePluginId) return
     const instance = this.views.get(this.activePluginId)
     if (instance && instance.isAttached) {
       const windowBounds = this.mainWindow.getContentBounds()
+      const effectiveLeft = this.sidebarWidth
       // 侧边栏宽度动态适配 (展开 240px，折叠 68px)，右侧抽屉动态适配 (打开 384px，关闭 0px)，顶部标题栏 50px
       const targetBounds = {
-        x: this.sidebarWidth,
+        x: effectiveLeft,
         y: 50,
-        width: Math.max(200, windowBounds.width - this.sidebarWidth - this.rightDrawerWidth),
+        width: Math.max(100, windowBounds.width - effectiveLeft - this.rightDrawerWidth),
         height: Math.max(300, windowBounds.height - 50)
       }
       instance.view.setBounds(targetBounds)
@@ -477,6 +527,15 @@ export class PluginViewContainerManager {
     this.activePluginId = pluginId
     this.updateViewBounds()
     this.applyThemeToView(instance.view, this.currentTheme)
+  }
+
+  public getActivePluginId(): string | null {
+    return this.activePluginId
+  }
+
+  public getActivePluginView(): PluginViewInstance | undefined {
+    if (!this.activePluginId) return undefined
+    return this.views.get(this.activePluginId)
   }
 
   /**

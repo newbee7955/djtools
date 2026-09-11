@@ -141,7 +141,7 @@ export default defineConfig({
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' doujiao-plugin:; script-src 'self' 'unsafe-inline' doujiao-plugin:; style-src 'self' 'unsafe-inline' doujiao-plugin:; img-src 'self' data: https: doujiao-plugin:; connect-src 'self' doujiao-plugin:;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: doujiao-plugin:; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https: doujiao-plugin:; worker-src 'self' blob: data: doujiao-plugin:; child-src 'self' blob: doujiao-plugin:; style-src 'self' 'unsafe-inline' doujiao-plugin:; img-src 'self' data: blob: https: http: doujiao-plugin:; connect-src 'self' data: blob: https: http: doujiao-plugin:;" />
     <title>${finalName}</title>
   </head>
   <body class="bg-slate-900 text-slate-100 font-sans select-none overflow-x-hidden">

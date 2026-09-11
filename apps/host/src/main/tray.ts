@@ -96,6 +96,8 @@ export class AppTrayManager {
   public getTrayIconPath(): string {
     const appPath = app.getAppPath()
     const candidates = [
+      join(app.getPath('userData'), 'icon.ico'),
+      join(process.resourcesPath || '', 'build/icon.ico'),
       join(appPath, 'build/icon.ico'),
       join(appPath, 'build/icon.png'),
       join(__dirname, '../../build/icon.ico'),

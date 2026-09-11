@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { AspectRatio, EditorSettings, ToolType } from '../types/editor';
 
 interface ToolbarProps {
@@ -23,6 +23,7 @@ interface ToolbarProps {
   onSaveAs: () => void;
   onOpenFile: () => void;
   onOpenWorkspaceDrawer: () => void;
+  onScreenshot: (mode?: 'snip' | 'fullscreen') => void;
   imageDimensions?: { width: number; height: number };
   cropAspect: AspectRatio;
   onChangeCropAspect: (aspect: AspectRatio) => void;
@@ -85,6 +86,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSaveAs,
   onOpenFile,
   onOpenWorkspaceDrawer,
+  onScreenshot,
   imageDimensions,
   cropAspect,
   onChangeCropAspect,
@@ -92,6 +94,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onCancelCrop,
   onClearWorkspace
 }) => {
+  const [showScreenshotMenu, setShowScreenshotMenu] = useState(false);
+
   return (
     <div className="flex flex-col bg-slate-900 border-b border-slate-800 select-none shadow-md z-30">
       {/* 1. 顶部主控制栏 */}
@@ -230,8 +234,65 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </button>
         </div>
 
-        {/* 右侧：动作按钮 (导入、复制、保存) */}
+        {/* 右侧：动作按钮 (截图、导入、复制、保存) */}
         <div className="flex items-center space-x-2">
+          {/* 屏幕截图按钮组 */}
+          <div className="relative flex items-center bg-sky-600 hover:bg-sky-500 rounded text-white shadow transition">
+            <button
+              onClick={() => onScreenshot('snip')}
+              className="px-2.5 py-1 text-xs font-medium flex items-center space-x-1.5 active:scale-95 transition"
+              title="划选屏幕截图 (快捷键: Alt + Shift + A)"
+            >
+              <span>📸</span>
+              <span>截图</span>
+              <span className="hidden xl:inline text-[10px] text-sky-200 bg-sky-700/70 px-1 py-0.5 rounded font-mono">Alt+Shift+A</span>
+            </button>
+            <div className="w-[1px] h-3.5 bg-sky-400/40" />
+            <button
+              onClick={() => setShowScreenshotMenu(!showScreenshotMenu)}
+              className="px-1.5 py-1 hover:bg-sky-700 rounded-r text-sky-100 transition"
+              title="选择截图模式"
+            >
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+
+            {showScreenshotMenu && (
+              <div
+                className="absolute left-0 top-full mt-1.5 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-50 text-xs space-y-1"
+                onMouseLeave={() => setShowScreenshotMenu(false)}
+              >
+                <button
+                  onClick={() => {
+                    setShowScreenshotMenu(false);
+                    onScreenshot('snip');
+                  }}
+                  className="w-full px-2.5 py-1.5 hover:bg-slate-800 rounded-lg flex items-center justify-between text-left text-slate-200 hover:text-white transition"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span>✂️</span>
+                    <span>区域划选截图</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">Alt+Shift+A</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowScreenshotMenu(false);
+                    onScreenshot('fullscreen');
+                  }}
+                  className="w-full px-2.5 py-1.5 hover:bg-slate-800 rounded-lg flex items-center justify-between text-left text-slate-200 hover:text-white transition"
+                >
+                  <div className="flex items-center space-x-2">
+                    <span>🖥️</span>
+                    <span>全屏直接截图</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">秒截</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onOpenFile}
             className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded flex items-center space-x-1 transition"

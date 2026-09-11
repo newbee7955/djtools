@@ -7,10 +7,25 @@ const hostAPI = {
   hidePlugin: () => ipcRenderer.invoke('host:plugins:hide'),
   setSidebarWidth: (width: number) => ipcRenderer.invoke('host:view:set-sidebar-width', width),
   setRightDrawerWidth: (width: number) => ipcRenderer.invoke('host:view:set-right-drawer-width', width),
+  setLeftOverlayWidth: (width: number) => ipcRenderer.invoke('host:view:set-left-overlay-width', width),
+  showMoreMenuPopover: (params: { top: number; left: number; plugins: any[]; activeTab: string; theme: string }) =>
+    ipcRenderer.invoke('host:more-menu:show', params),
+  hideMoreMenuPopover: () => ipcRenderer.invoke('host:more-menu:hide'),
+  scheduleHideMoreMenuPopover: (delayMs?: number) =>
+    ipcRenderer.invoke('host:more-menu:schedule-hide', delayMs),
+  onMoreMenuAction: (callback: (action: string, data: any) => void) => {
+    const handler = (_: any, action: string, data: any) => callback(action, data)
+    ipcRenderer.on('host:more-menu:action', handler)
+    return () => {
+      ipcRenderer.removeListener('host:more-menu:action', handler)
+    }
+  },
   setTheme: (theme: string) => ipcRenderer.invoke('host:view:set-theme', theme),
   listPlugins: () => ipcRenderer.invoke('host:plugins:list'),
   installPluginZip: () => ipcRenderer.invoke('host:plugins:install-zip'),
   uninstallPlugin: (pluginId: string) => ipcRenderer.invoke('host:plugins:uninstall', pluginId),
+  togglePlugin: (pluginId: string, enabled: boolean) =>
+    ipcRenderer.invoke('host:plugins:toggle', { pluginId, enabled }),
 
   // 市场与远端安装
   fetchMarketPlugins: (forceRefresh?: boolean) =>
@@ -82,6 +97,15 @@ const hostAPI = {
     ipcRenderer.invoke('host:workspace:reset-directory', scope),
   openWorkspaceDirectory: (scope: string) =>
     ipcRenderer.invoke('host:workspace:open-directory', scope),
+
+  // 导航监听
+  onNavigate: (callback: (tab: string) => void) => {
+    const handler = (_: any, tab: string) => callback(tab)
+    ipcRenderer.on('host:navigate', handler)
+    return () => {
+      ipcRenderer.removeListener('host:navigate', handler)
+    }
+  },
 
   // 窗口控制
   minimize: () => ipcRenderer.invoke('host:window:minimize'),
