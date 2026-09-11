@@ -269,7 +269,40 @@ button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
 }
 
 /* 亮色模式适配 (跟随宿主 data-theme="light") */
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .text-slate-300,
+[data-theme="light"] .text-slate-400 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
 [data-theme="light"] .vditor {
+  color: #0f172a !important;
+  --textarea-background-color: #ffffff !important;
+  --panel-background-color: #ffffff !important;
+}
+
+[data-theme="light"] .vditor,
+[data-theme="light"] .vditor-content,
+[data-theme="light"] .vditor-ir,
+[data-theme="light"] .vditor-sv,
+[data-theme="light"] .vditor-reset,
+[data-theme="light"] pre.vditor-reset,
+[data-theme="light"] .vditor-ir pre.vditor-reset,
+[data-theme="light"] .vditor-ir pre.vditor-reset:focus {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .vditor--dark {
+  background-color: #ffffff !important;
   color: #0f172a !important;
 }
 
@@ -300,4 +333,37 @@ button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
 [data-theme="light"] .vditor-reset h2,
 [data-theme="light"] .vditor-reset h3 {
   border-bottom-color: #e2e8f0 !important;
+}
+
+/* 右键菜单在亮色模式下的高质感适配 */
+[data-theme="light"] .context-menu-box {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-btn {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-btn:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-danger {
+  color: #e11d48 !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-danger:hover {
+  background-color: #ffe4e6 !important;
+  color: #be123c !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-label {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-divider {
+  border-color: #e2e8f0 !important;
 }

@@ -89,6 +89,7 @@ export default function App(): JSX.Element {
     tableIndex: number
     rowIndex: number
     colIndex: number
+    headerTexts: string[]
   } | null>(null)
   const contextMenuRef = useRef<HTMLDivElement>(null)
 
@@ -400,13 +401,21 @@ export default function App(): JSX.Element {
     )
   }
 
+  const checkIsLight = () => {
+    return (
+      document.documentElement.getAttribute('data-theme') === 'light' ||
+      document.body.getAttribute('data-theme') === 'light' ||
+      (!document.documentElement.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: light)').matches)
+    )
+  }
+
   // 初始化与模式切换时构建 Vditor 实例
   useEffect(() => {
     if (!vditorContainerRef.current) return
     if (viewMode === 'preview') return
     if (!activeDoc) return
 
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+    const isLight = checkIsLight()
     const targetMode = viewMode === 'sv' ? 'sv' : 'ir'
 
     isVditorReadyRef.current = false
@@ -471,6 +480,13 @@ export default function App(): JSX.Element {
         vditorRef.current = vditor
         isVditorReadyRef.current = true
         setIsVditorReady(true)
+        // 关键：初始化完成后强制核对主题，防止宿主异步注入 data-theme 发生在初始化期间
+        const light = checkIsLight()
+        vditor.setTheme(
+          light ? 'classic' : 'dark',
+          light ? 'light' : 'dark',
+          light ? 'github' : 'atom-one-dark'
+        )
         if (activeDocRef.current && vditor.getValue() !== activeDocRef.current.content) {
           vditor.setValue(activeDocRef.current.content)
         }
@@ -497,17 +513,19 @@ export default function App(): JSX.Element {
 
   // 监听系统主题变化实时同步 Vditor 主题
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light'
-      if (vditorRef.current && isVditorReadyRef.current) {
+    const syncTheme = () => {
+      const isLight = checkIsLight()
+      if (vditorRef.current) {
         vditorRef.current.setTheme(
           isLight ? 'classic' : 'dark',
           isLight ? 'light' : 'dark',
           isLight ? 'github' : 'atom-one-dark'
         )
       }
-    })
+    }
+    const observer = new MutationObserver(syncTheme)
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme'] })
     return () => observer.disconnect()
   }, [])
 
@@ -562,23 +580,52 @@ export default function App(): JSX.Element {
     op: 'insertRowAbove' | 'insertRowBelow' | 'deleteRow' | 'insertColLeft' | 'insertColRight' | 'deleteCol',
     tableIdx: number,
     domRow: number,
-    col: number
+    col: number,
+    headerTexts?: string[]
   ) => {
     if (!vditorRef.current) { showToast('编辑器未就绪，请稍候再试'); return }
 
     // 优先使用 React 状态中的内容（比 IR 模式 getValue() 更稳定）
     const rawMd = activeDocRef.current?.content ?? vditorRef.current.getValue()
-    // 统一行尾为 \n，避免 Windows \r\n 干扰行解析
     const md = rawMd.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-
     const allTables = findMdTables(md)
-    if (tableIdx < 0 || tableIdx >= allTables.length) {
-      showToast(`未找到目标表格（DOM索引 ${tableIdx}，共找到 ${allTables.length} 个表格）`)
+
+    if (allTables.length === 0) {
+      showToast('未找到 Markdown 表格')
       return
     }
 
-    const { start, end } = allTables[tableIdx]
     const mdLines = md.split('\n')
+
+    // 多级智能匹配目标表格：
+    let targetIdx = -1
+
+    // 策略 1：表头单元格内容精准匹配（最稳定，完全不怕 DOM 顺序或索引偏差）
+    if (headerTexts && headerTexts.length > 0) {
+      targetIdx = allTables.findIndex((t) => {
+        const tLines = mdLines.slice(t.start, t.end + 1)
+        const tRows = parseMdTable(tLines)
+        const mdHeaders = (tRows[0] || []).map((h) => h.trim())
+        return headerTexts.every((dh, i) => dh === mdHeaders[i])
+      })
+    }
+
+    // 策略 2：DOM 索引有效时使用
+    if (targetIdx === -1 && tableIdx >= 0 && tableIdx < allTables.length) {
+      targetIdx = tableIdx
+    }
+
+    // 策略 3：单表格直接采用
+    if (targetIdx === -1 && allTables.length === 1) {
+      targetIdx = 0
+    }
+
+    // 策略 4：若仍未匹配到但有 tableIdx，限制在安全范围内
+    if (targetIdx === -1) {
+      targetIdx = Math.max(0, Math.min(tableIdx >= 0 ? tableIdx : 0, allTables.length - 1))
+    }
+
+    const { start, end } = allTables[targetIdx]
     const tableLines = mdLines.slice(start, end + 1)
     const rows = parseMdTable(tableLines)
     const colCount = rows[0]?.length ?? 2
@@ -587,20 +634,26 @@ export default function App(): JSX.Element {
     if (op === 'insertRowAbove') {
       const insertAt = mdRow <= 1 ? 2 : mdRow
       rows.splice(insertAt, 0, Array(colCount).fill('  '))
+      showToast('已在上方插入行')
     } else if (op === 'insertRowBelow') {
       const insertAt = mdRow < 2 ? 2 : mdRow + 1
       rows.splice(insertAt, 0, Array(colCount).fill('  '))
+      showToast('已在下方插入行')
     } else if (op === 'deleteRow') {
       if (rows.length <= 3) { showToast('至少需要保留一行数据'); return }
       if (mdRow === 0 || mdRow === 1) { showToast('不能删除表头'); return }
       rows.splice(mdRow, 1)
+      showToast('已删除当前行')
     } else if (op === 'insertColLeft') {
-      rows.forEach((r, i) => r.splice(col, 0, i === 1 ? '---' : '  '))
+      rows.forEach((r, i) => r.splice(Math.max(0, col), 0, i === 1 ? '---' : '  '))
+      showToast('已在左侧插入列')
     } else if (op === 'insertColRight') {
-      rows.forEach((r, i) => r.splice(col + 1, 0, i === 1 ? '---' : '  '))
+      rows.forEach((r, i) => r.splice(Math.max(0, col) + 1, 0, i === 1 ? '---' : '  '))
+      showToast('已在右侧插入列')
     } else if (op === 'deleteCol') {
       if (colCount <= 1) { showToast('至少需要保留一列'); return }
-      rows.forEach((r) => r.splice(col, 1))
+      rows.forEach((r) => r.splice(Math.max(0, col), 1))
+      showToast('已删除当前列')
     }
 
     const newMd = [
@@ -628,24 +681,55 @@ export default function App(): JSX.Element {
     if (!container) return
     const handler = (e: MouseEvent) => {
       if (viewMode === 'preview') return
-      e.preventDefault()
       const target = e.target as Element
       const tdEl = target.closest('td,th') as HTMLElement | null
       const trEl = tdEl?.closest('tr') as HTMLTableRowElement | null
       const tableEl = tdEl?.closest('table') as HTMLTableElement | null
 
       if (tableEl && tdEl && trEl) {
-        const editorRoot =
-          container.querySelector('.vditor-ir,.vditor-wysiwyg,.vditor-sv') ?? container
-        const allTables = Array.from(editorRoot.querySelectorAll('table'))
-        const tableIndex = allTables.indexOf(tableEl)
+        e.preventDefault()
+        // 依次从最精确到最广范围查找所有表格
+        const allDomTables = Array.from(
+          container.querySelectorAll('.vditor-reset table, .vditor-content table, table')
+        )
+        const uniqueTables = Array.from(new Set(allDomTables))
+        let tableIndex = uniqueTables.indexOf(tableEl)
+        if (tableIndex === -1) {
+          tableIndex = uniqueTables.findIndex((t) => t === tableEl || t.contains(tdEl))
+        }
+
+        // 提取表头文本用于语义内容精准匹配
+        const headerCells = Array.from(
+          tableEl.querySelectorAll('tr:first-child th, tr:first-child td')
+        )
+        const headerTexts = headerCells.map((c) => (c.textContent || '').trim()).filter(Boolean)
+
         const allRows = Array.from(tableEl.querySelectorAll('tr'))
         const rowIndex = allRows.indexOf(trEl)
         const allCols = Array.from(trEl.querySelectorAll('td,th'))
         const colIndex = allCols.indexOf(tdEl)
-        setContextMenu({ x: e.clientX, y: e.clientY, inTable: true, tableIndex, rowIndex, colIndex })
+
+        setContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          inTable: true,
+          tableIndex,
+          rowIndex,
+          colIndex,
+          headerTexts
+        })
       } else {
-        setContextMenu({ x: e.clientX, y: e.clientY, inTable: false, tableIndex: -1, rowIndex: -1, colIndex: -1 })
+        // 在普通文本区右键，也可以弹出菜单插入表格
+        e.preventDefault()
+        setContextMenu({
+          x: e.clientX,
+          y: e.clientY,
+          inTable: false,
+          tableIndex: -1,
+          rowIndex: -1,
+          colIndex: -1,
+          headerTexts: []
+        })
       }
     }
     container.addEventListener('contextmenu', handler)
@@ -841,7 +925,7 @@ export default function App(): JSX.Element {
       {contextMenu && (
         <div
           ref={contextMenuRef}
-          className="fixed z-[200] min-w-[180px] bg-slate-800 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 py-1 text-sm select-none"
+          className="context-menu-box fixed z-[200] min-w-[180px] bg-slate-800 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 py-1 text-sm select-none"
           style={{
             left: Math.min(contextMenu.x, window.innerWidth - 200),
             top: Math.min(contextMenu.y, window.innerHeight - 300),
@@ -850,52 +934,52 @@ export default function App(): JSX.Element {
           {/* 表格内：行列操作 */}
           {contextMenu.inTable ? (
             <>
-              <div className="px-3 py-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">行操作</div>
+              <div className="context-menu-label px-3 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">行操作</div>
               <button
-                className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-                onClick={() => applyTableOp('insertRowAbove', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+                className="context-menu-btn w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                onClick={() => applyTableOp('insertRowAbove', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex, contextMenu.headerTexts)}
               >
                 <span className="text-base">⬆️</span> 在上方插入行
               </button>
               <button
-                className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-                onClick={() => applyTableOp('insertRowBelow', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+                className="context-menu-btn w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                onClick={() => applyTableOp('insertRowBelow', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex, contextMenu.headerTexts)}
               >
                 <span className="text-base">⬇️</span> 在下方插入行
               </button>
               <button
-                className="w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/15 hover:text-red-300 flex items-center gap-2 transition-colors"
-                onClick={() => applyTableOp('deleteRow', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+                className="context-menu-danger w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/15 hover:text-red-300 flex items-center gap-2 transition-colors cursor-pointer"
+                onClick={() => applyTableOp('deleteRow', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex, contextMenu.headerTexts)}
               >
                 <span className="text-base">🗑️</span> 删除当前行
               </button>
-              <div className="my-1 border-t border-slate-700/80" />
-              <div className="px-3 py-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">列操作</div>
+              <div className="context-menu-divider my-1 border-t border-slate-700/80" />
+              <div className="context-menu-label px-3 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">列操作</div>
               <button
-                className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-                onClick={() => applyTableOp('insertColLeft', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+                className="context-menu-btn w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                onClick={() => applyTableOp('insertColLeft', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex, contextMenu.headerTexts)}
               >
                 <span className="text-base">⬅️</span> 在左侧插入列
               </button>
               <button
-                className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
-                onClick={() => applyTableOp('insertColRight', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+                className="context-menu-btn w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                onClick={() => applyTableOp('insertColRight', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex, contextMenu.headerTexts)}
               >
                 <span className="text-base">➡️</span> 在右侧插入列
               </button>
               <button
-                className="w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/15 hover:text-red-300 flex items-center gap-2 transition-colors"
-                onClick={() => applyTableOp('deleteCol', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+                className="context-menu-danger w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/15 hover:text-red-300 flex items-center gap-2 transition-colors cursor-pointer"
+                onClick={() => applyTableOp('deleteCol', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex, contextMenu.headerTexts)}
               >
                 <span className="text-base">🗑️</span> 删除当前列
               </button>
-              <div className="my-1 border-t border-slate-700/80" />
+              <div className="context-menu-divider my-1 border-t border-slate-700/80" />
             </>
           ) : null}
 
           {/* 通用操作：插入表格 */}
           <button
-            className="w-full px-3 py-1.5 text-left text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200 flex items-center gap-2 transition-colors"
+            className="context-menu-btn w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
             onClick={insertNewTable}
           >
             <span className="text-base">📋</span> 插入新表格
