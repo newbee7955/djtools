@@ -79,6 +79,17 @@ export default function App(): JSX.Element {
   const [showNewFolderModal, setShowNewFolderModal] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
 
+  // 右键上下文菜单
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    inTable: boolean
+    tableIndex: number
+    rowIndex: number
+    colIndex: number
+  } | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+
   const vditorContainerRef = useRef<HTMLDivElement>(null)
   const vditorRef = useRef<Vditor | null>(null)
   const isVditorReadyRef = useRef<boolean>(false)
@@ -503,6 +514,142 @@ export default function App(): JSX.Element {
     } catch {}
   }, [viewMode])
 
+  // ──────────────────────────────────────────────
+  //  右键上下文菜单 — 表格操作工具函数
+  // ──────────────────────────────────────────────
+
+  /** 找出 markdown 文本中所有表格的行范围 */
+  const findMdTables = (md: string) => {
+    const lines = md.split('\n')
+    const tables: { start: number; end: number }[] = []
+    let start = -1
+    for (let i = 0; i <= lines.length; i++) {
+      const line = (lines[i] ?? '').trim()
+      if (line.startsWith('|')) {
+        if (start === -1) start = i
+      } else {
+        if (start !== -1) { tables.push({ start, end: i - 1 }); start = -1 }
+      }
+    }
+    return tables
+  }
+
+  /** 解析表格行（含 separator）为字符串二维数组 */
+  const parseMdTable = (lines: string[]) =>
+    lines.map((l) => {
+      const cells = l.split('|').map((c) => c.trim())
+      if (cells[0] === '') cells.shift()
+      if (cells[cells.length - 1] === '') cells.pop()
+      return cells
+    })
+
+  /** 序列化二维数组回 markdown 表格行字符串 */
+  const serializeMdTable = (rows: string[][]) =>
+    rows.map((r) => '| ' + r.join(' | ') + ' |').join('\n')
+
+  /**
+   * DOM rowIndex → markdown 行索引（含 separator 在 index 1）
+   * DOM: 0=header, 1,2,...=body  |  MD: 0=header, 1=sep, 2,3,...=body
+   */
+  const domRowToMdRow = (domRow: number) => (domRow === 0 ? 0 : domRow + 1)
+
+  /** 执行表格操作并写回 Vditor */
+  const applyTableOp = (
+    op: 'insertRowAbove' | 'insertRowBelow' | 'deleteRow' | 'insertColLeft' | 'insertColRight' | 'deleteCol',
+    tableIdx: number,
+    domRow: number,
+    col: number
+  ) => {
+    if (!vditorRef.current || !isVditorReadyRef.current) return
+    const md = vditorRef.current.getValue()
+    const allTables = findMdTables(md)
+    if (tableIdx < 0 || tableIdx >= allTables.length) return
+
+    const { start, end } = allTables[tableIdx]
+    const mdLines = md.split('\n')
+    const tableLines = mdLines.slice(start, end + 1)
+    const rows = parseMdTable(tableLines)
+    const colCount = rows[0]?.length ?? 2
+    const mdRow = domRowToMdRow(domRow)
+
+    if (op === 'insertRowAbove') {
+      const insertAt = mdRow <= 1 ? 2 : mdRow
+      rows.splice(insertAt, 0, Array(colCount).fill('  '))
+    } else if (op === 'insertRowBelow') {
+      const insertAt = mdRow < 1 ? 2 : mdRow + 1
+      rows.splice(insertAt, 0, Array(colCount).fill('  '))
+    } else if (op === 'deleteRow') {
+      if (rows.length <= 3) { showToast('至少需要保留一行数据'); return }
+      if (mdRow === 0 || mdRow === 1) { showToast('不能删除表头'); return }
+      rows.splice(mdRow, 1)
+    } else if (op === 'insertColLeft') {
+      rows.forEach((r, i) => r.splice(col, 0, i === 1 ? '---' : '  '))
+    } else if (op === 'insertColRight') {
+      rows.forEach((r, i) => r.splice(col + 1, 0, i === 1 ? '---' : '  '))
+    } else if (op === 'deleteCol') {
+      if (colCount <= 1) { showToast('至少需要保留一列'); return }
+      rows.forEach((r) => r.splice(col, 1))
+    }
+
+    const newMd = [
+      ...mdLines.slice(0, start),
+      ...serializeMdTable(rows).split('\n'),
+      ...mdLines.slice(end + 1)
+    ].join('\n')
+    vditorRef.current.setValue(newMd)
+    updateContent(newMd)
+    setContextMenu(null)
+  }
+
+  /** 在光标处插入空白表格模板 */
+  const insertNewTable = () => {
+    if (!vditorRef.current || !isVditorReadyRef.current) return
+    vditorRef.current.insertValue('\n\n| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |\n\n')
+    setContextMenu(null)
+  }
+
+  // 监听 Vditor 容器右键，识别是否在表格内
+  useEffect(() => {
+    const container = vditorContainerRef.current
+    if (!container) return
+    const handler = (e: MouseEvent) => {
+      if (viewMode === 'preview') return
+      e.preventDefault()
+      const target = e.target as Element
+      const tdEl = target.closest('td,th') as HTMLElement | null
+      const trEl = tdEl?.closest('tr') as HTMLTableRowElement | null
+      const tableEl = tdEl?.closest('table') as HTMLTableElement | null
+
+      if (tableEl && tdEl && trEl) {
+        const editorRoot =
+          container.querySelector('.vditor-ir,.vditor-wysiwyg,.vditor-sv') ?? container
+        const allTables = Array.from(editorRoot.querySelectorAll('table'))
+        const tableIndex = allTables.indexOf(tableEl)
+        const allRows = Array.from(tableEl.querySelectorAll('tr'))
+        const rowIndex = allRows.indexOf(trEl)
+        const allCols = Array.from(trEl.querySelectorAll('td,th'))
+        const colIndex = allCols.indexOf(tdEl)
+        setContextMenu({ x: e.clientX, y: e.clientY, inTable: true, tableIndex, rowIndex, colIndex })
+      } else {
+        setContextMenu({ x: e.clientX, y: e.clientY, inTable: false, tableIndex: -1, rowIndex: -1, colIndex: -1 })
+      }
+    }
+    container.addEventListener('contextmenu', handler)
+    return () => container.removeEventListener('contextmenu', handler)
+  }, [viewMode])
+
+  // 点击其他区域关闭右键菜单
+  useEffect(() => {
+    if (!contextMenu) return
+    const close = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    window.addEventListener('mousedown', close)
+    return () => window.removeEventListener('mousedown', close)
+  }, [!!contextMenu])
+
   // 更新标题并重命名磁盘文件
   const updateTitle = async (title: string) => {
     const safeTitle = title.trim() || '未命名文档'
@@ -673,6 +820,72 @@ export default function App(): JSX.Element {
         <div className="absolute top-4 right-6 z-50 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs shadow-xl shadow-indigo-600/30 flex items-center gap-2 animate-bounce">
           <span>✨</span>
           <span>{toast}</span>
+        </div>
+      )}
+
+      {/* 右键上下文菜单 */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-[200] min-w-[180px] bg-slate-800 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 py-1 text-sm select-none"
+          style={{
+            left: Math.min(contextMenu.x, window.innerWidth - 200),
+            top: Math.min(contextMenu.y, window.innerHeight - 300),
+          }}
+        >
+          {/* 表格内：行列操作 */}
+          {contextMenu.inTable ? (
+            <>
+              <div className="px-3 py-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">行操作</div>
+              <button
+                className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={() => applyTableOp('insertRowAbove', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+              >
+                <span className="text-base">⬆️</span> 在上方插入行
+              </button>
+              <button
+                className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={() => applyTableOp('insertRowBelow', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+              >
+                <span className="text-base">⬇️</span> 在下方插入行
+              </button>
+              <button
+                className="w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/15 hover:text-red-300 flex items-center gap-2 transition-colors"
+                onClick={() => applyTableOp('deleteRow', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+              >
+                <span className="text-base">🗑️</span> 删除当前行
+              </button>
+              <div className="my-1 border-t border-slate-700/80" />
+              <div className="px-3 py-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">列操作</div>
+              <button
+                className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={() => applyTableOp('insertColLeft', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+              >
+                <span className="text-base">⬅️</span> 在左侧插入列
+              </button>
+              <button
+                className="w-full px-3 py-1.5 text-left text-slate-200 hover:bg-slate-700 hover:text-white flex items-center gap-2 transition-colors"
+                onClick={() => applyTableOp('insertColRight', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+              >
+                <span className="text-base">➡️</span> 在右侧插入列
+              </button>
+              <button
+                className="w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/15 hover:text-red-300 flex items-center gap-2 transition-colors"
+                onClick={() => applyTableOp('deleteCol', contextMenu.tableIndex, contextMenu.rowIndex, contextMenu.colIndex)}
+              >
+                <span className="text-base">🗑️</span> 删除当前列
+              </button>
+              <div className="my-1 border-t border-slate-700/80" />
+            </>
+          ) : null}
+
+          {/* 通用操作：插入表格 */}
+          <button
+            className="w-full px-3 py-1.5 text-left text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200 flex items-center gap-2 transition-colors"
+            onClick={insertNewTable}
+          >
+            <span className="text-base">📋</span> 插入新表格
+          </button>
         </div>
       )}
 
