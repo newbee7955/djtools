@@ -1,4 +1,4 @@
-﻿import { app, net } from 'electron'
+import { app, net } from 'electron'
 import { join, resolve } from 'path'
 import { existsSync, readFileSync, createWriteStream, mkdirSync } from 'fs'
 import semver from 'semver'
@@ -55,6 +55,7 @@ export interface MarketPluginView {
   installedVersion?: string
   hasUpdate: boolean
   isDev?: boolean
+  enabled?: boolean
 }
 
 export interface MarketFetchResult {
@@ -66,10 +67,6 @@ export interface MarketFetchResult {
 
 const GITHUB_OFFICIAL_REGISTRY_URLS = [
   'https://raw.githubusercontent.com/newbee7955/djtools/main/registry/plugins-registry.json',
-  'https://ghproxy.net/https://raw.githubusercontent.com/newbee7955/djtools/main/registry/plugins-registry.json',
-  'https://cdn.jsdelivr.net/gh/newbee7955/djtools@main/registry/plugins-registry.json',
-  'https://fastly.jsdelivr.net/gh/newbee7955/djtools@main/registry/plugins-registry.json',
-  'https://gcore.jsdelivr.net/gh/newbee7955/djtools@main/registry/plugins-registry.json',
   'https://github.com/newbee7955/djtools/raw/main/registry/plugins-registry.json'
 ]
 
@@ -161,11 +158,16 @@ export class RegistryClient {
         if (resp.ok) {
           const data = (await resp.json()) as RegistryData
           if (data && Array.isArray(data.plugins)) {
-            this.cachedRegistry = data
-            this.lastFetchTime = Date.now()
-            this.lastSyncFromRemote = true
-            console.log(`[RegistryClient] Synced registry v${data.registryVersion} from remote`)
-            return data
+            const currentVer = Math.max(this.cachedRegistry?.registryVersion || 0, localData?.registryVersion || 0)
+            if ((data.registryVersion || 0) >= currentVer) {
+              this.cachedRegistry = data
+              this.lastFetchTime = Date.now()
+              this.lastSyncFromRemote = true
+              console.log(`[RegistryClient] Synced registry v${data.registryVersion} from remote`)
+              return data
+            } else {
+              console.log(`[RegistryClient] Remote registry v${data.registryVersion} < local v${currentVer}, keeping local`)
+            }
           }
         } else {
           this.lastSyncError = `HTTP ${resp.status}`
@@ -176,9 +178,9 @@ export class RegistryClient {
       }
     }
 
-    // 远端全部失败，回退本地
+    // 远端全部失败或版本较低，回退本地
     if (localData) {
-      console.log('[RegistryClient] All remote failed, using local fallback')
+      console.log('[RegistryClient] Using local registry fallback')
       this.cachedRegistry = localData
       this.lastFetchTime = Date.now()
       return localData
@@ -199,10 +201,16 @@ export class RegistryClient {
           if (resp.ok) {
             const data = (await resp.json()) as RegistryData
             if (data && Array.isArray(data.plugins)) {
-              this.cachedRegistry = data
-              this.lastFetchTime = Date.now()
-              this.lastSyncFromRemote = true
-              console.log(`[RegistryClient] Background sync done: v${data.registryVersion}`)
+              const localData = this.loadLocalRegistry()
+              const currentVer = Math.max(this.cachedRegistry?.registryVersion || 0, localData?.registryVersion || 0)
+              if ((data.registryVersion || 0) >= currentVer) {
+                this.cachedRegistry = data
+                this.lastFetchTime = Date.now()
+                this.lastSyncFromRemote = true
+                console.log(`[RegistryClient] Background sync done: v${data.registryVersion}`)
+              } else {
+                console.log(`[RegistryClient] Remote registry v${data.registryVersion} < current v${currentVer}, skipping overwrite`)
+              }
               return
             }
           }
@@ -253,7 +261,8 @@ export class RegistryClient {
         isInstalled,
         installedVersion,
         hasUpdate,
-        isDev: local?.isDev
+        isDev: local?.isDev,
+        enabled: local ? local.enabled !== false : undefined
       })
     }
 
@@ -275,9 +284,19 @@ export class RegistryClient {
       throw new Error(`在插件市场中未找到插件: ${pluginId}`)
     }
 
-    const release = version
+    let release = version
       ? plugin.releases.find((r) => r.version === version)
       : plugin.releases[0]
+
+    if (!release) {
+      const localData = this.loadLocalRegistry()
+      const localPlugin = localData?.plugins.find((p) => p.id === pluginId)
+      if (localPlugin) {
+        release = version
+          ? localPlugin.releases.find((r) => r.version === version)
+          : localPlugin.releases[0]
+      }
+    }
 
     if (!release) {
       throw new Error(`未找到插件版本: ${pluginId} @ ${version || 'latest'}`)
@@ -316,14 +335,9 @@ export class RegistryClient {
     }
 
     if (!downloaded) {
-      // 2. 配置多级全球/国内高速 CDN 加速镜像源 (秒级下载)，备选直连 GitHub
+      // 直连 GitHub 下载
       const candidateUrls = Array.from(
         new Set([
-          `https://cdn.jsdelivr.net/gh/newbee7955/djtools@main/registry/releases/${zipFileName}`,
-          `https://fastly.jsdelivr.net/gh/newbee7955/djtools@main/registry/releases/${zipFileName}`,
-          `https://gcore.jsdelivr.net/gh/newbee7955/djtools@main/registry/releases/${zipFileName}`,
-          `https://testingcf.jsdelivr.net/gh/newbee7955/djtools@main/registry/releases/${zipFileName}`,
-          `https://ghproxy.net/https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/${zipFileName}`,
           artifact.url,
           `https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/${zipFileName}`,
           `https://github.com/newbee7955/djtools/raw/main/registry/releases/${zipFileName}`

@@ -39,7 +39,7 @@ export interface DiscoveredPlugin {
 // 安全限制常量 (根据 V2.0 规格书)
 const MAX_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024 // 100 MB
 const MAX_SINGLE_FILE_BYTES = 25 * 1024 * 1024        // 25 MB
-const MAX_ENTRY_COUNT = 500                           // 500 个文件条目
+const MAX_ENTRY_COUNT = 2000                          // 2000 个文件条目 (支持富文本/离线渲染插件包)
 const PROHIBITED_EXTENSIONS = /\.(exe|bat|cmd|dll|node|sh|vbs|ps1|msi|so|dylib)$/i
 
 export class PluginManager {
@@ -95,12 +95,13 @@ export class PluginManager {
     const allPlugins = this.listAllPlugins()
     const match = allPlugins.find((p) => p.id === pluginId)
     if (match && match.activeVersionPath && existsSync(match.activeVersionPath)) {
+      if (match.enabled === false) return null
       return match.activeVersionPath
     }
 
     // 2. 检查 userData/plugins/<pluginId>/versions/<activeVersion>
     const state = this.getPluginState(pluginId)
-    if (state && state.enabled && state.activeVersion) {
+    if (state && state.enabled !== false && state.activeVersion) {
       const versionDir = join(this.userDataPluginsDir, pluginId, 'versions', state.activeVersion)
       if (existsSync(versionDir)) {
         const distDir = join(versionDir, 'dist')
@@ -126,7 +127,16 @@ export class PluginManager {
     if (existsSync(stateFile)) {
       try {
         const raw = readFileSync(stateFile, 'utf-8')
-        return JSON.parse(raw.replace(/^\uFEFF/, '')) as PluginState
+        const state = JSON.parse(raw.replace(/^\uFEFF/, '')) as PluginState
+        if (state) {
+          if (state.enabled === undefined) {
+            state.enabled = true
+          }
+          if (!state.pluginId) {
+            state.pluginId = pluginId
+          }
+        }
+        return state
       } catch (err) {
         console.error(`[PluginManager] 读取 state.json 失败 (${pluginId}):`, err)
       }
@@ -270,9 +280,60 @@ export class PluginManager {
   }
 
   /**
+   * 切换插件的启用/禁用状态
+   */
+  public togglePlugin(pluginId: string, enabled: boolean): { success: boolean; enabled: boolean } {
+    let state = this.getPluginState(pluginId)
+    if (!state) {
+      const plugin = this.listAllPlugins().find((p) => p.id === pluginId)
+      if (plugin) {
+        state = {
+          pluginId,
+          activeVersion: plugin.version,
+          installedVersions: [plugin.version],
+          installedAt: Date.now(),
+          updatedAt: Date.now(),
+          enabled: true
+        }
+      } else {
+        throw new Error(`未找到插件 ${pluginId}`)
+      }
+    }
+
+    state.enabled = enabled
+    state.updatedAt = Date.now()
+    this.savePluginState(pluginId, state)
+
+    // 特殊插件生命周期联动：剪贴板历史插件
+    if (pluginId === 'clipboard-history') {
+      try {
+        const { ClipboardHistoryService } = require('../services/clipboard-service')
+        const clipboardService = ClipboardHistoryService.getInstance()
+        if (!enabled) {
+          clipboardService.stopWatching()
+        } else {
+          clipboardService.startWatching()
+        }
+      } catch (err) {
+        console.error('[PluginManager] 切换剪贴板监听状态失败:', err)
+      }
+    }
+
+    console.log(`[PluginManager] 插件 ${pluginId} 状态已更新为: ${enabled ? '启用' : '禁用'}`)
+    return { success: true, enabled }
+  }
+
+  /**
    * 卸载插件（销毁沙箱实例、移除版本目录与状态指针）
    */
   public uninstallPlugin(pluginId: string): boolean {
+    if (pluginId === 'clipboard-history') {
+      try {
+        const { ClipboardHistoryService } = require('../services/clipboard-service')
+        ClipboardHistoryService.getInstance().stopWatching()
+      } catch {}
+    }
+
     const pluginDir = join(this.userDataPluginsDir, pluginId)
     if (existsSync(pluginDir)) {
       try {
@@ -315,7 +376,7 @@ export class PluginManager {
                   publisher: manifest.publisher,
                   isDev: true,
                   isInstalled: true,
-                  enabled: true,
+                  enabled: this.getPluginState(manifest.id)?.enabled ?? true,
                   activeVersionPath: existsSync(distDir) ? distDir : join(devPluginsRoot, dirent.name),
                   manifest
                 })
@@ -360,7 +421,7 @@ export class PluginManager {
                   publisher: manifest.publisher,
                   isDev: false,
                   isInstalled: true,
-                  enabled: state.enabled,
+                  enabled: state.enabled !== false,
                   activeVersionPath,
                   manifest
                 })
