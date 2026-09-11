@@ -3,3 +3,68 @@
 @tailwind utilities;
 
 body { margin: 0; padding: 0; }
+
+/* 亮色模式深度自适应样式 (当 host 注入 data-theme="light" 时生效) */
+[data-theme="light"],
+[data-theme="light"] body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .bg-slate-900,
+[data-theme="light"] .bg-slate-950,
+[data-theme="light"] .bg-slate-950\/80,
+[data-theme="light"] .bg-slate-950\/50,
+[data-theme="light"] .bg-slate-950\/40,
+[data-theme="light"] .bg-slate-900\/90,
+[data-theme="light"] .bg-slate-900\/80 {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .bg-slate-800,
+[data-theme="light"] .bg-slate-800\/60,
+[data-theme="light"] .bg-slate-800\/40 {
+  background-color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .border-slate-800,
+[data-theme="light"] .border-slate-700,
+[data-theme="light"] .border-slate-800\/80,
+[data-theme="light"] .border-slate-800\/60,
+[data-theme="light"] .border-slate-800\/40,
+[data-theme="light"] .border-slate-700\/60,
+[data-theme="light"] .border-slate-700\/40 {
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .text-slate-300,
+[data-theme="light"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* ─────────────────────────────────────────────
+   亮色模式下保留有色文字（用于深色背景按钮/标签）
+   body 的 color:!important 会级联覆盖这些颜色，
+   需要单独声明回来避免按钮文字不可见。
+   ───────────────────────────────────────────── */
+[data-theme="light"] .text-white {
+  color: #ffffff !important;
+}
+[data-theme="light"] .text-emerald-400 { color: #34d399 !important; }
+[data-theme="light"] .text-emerald-300 { color: #6ee7b7 !important; }
+[data-theme="light"] .text-indigo-400  { color: #818cf8 !important; }
+[data-theme="light"] .text-indigo-300  { color: #a5b4fc !important; }
+[data-theme="light"] .text-indigo-200  { color: #c7d2fe !important; }
+[data-theme="light"] .text-rose-400    { color: #fb7185 !important; }
+[data-theme="light"] .text-amber-400   { color: #fbbf24 !important; }
+[data-theme="light"] .text-red-400     { color: #f87171 !important; }
+

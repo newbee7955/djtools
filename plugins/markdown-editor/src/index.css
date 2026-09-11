@@ -154,6 +154,27 @@ button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
   color: #0f172a !important;
 }
 
+/* ─────────────────────────────────────────────────────
+   亮色模式：body 的 color:!important 会级联覆盖所有
+   text-* 类，需要单独声明保留有色文字（按钮、标签等）。
+   ───────────────────────────────────────────────────── */
+/* 深色背景按钮上的白色文字 */
+[data-theme="light"] button.text-white,
+[data-theme="light"] .text-white:not(input) {
+  color: #ffffff !important;
+}
+/* 各种强调色标签 */
+[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-emerald-500 { color: #10b981 !important; }
+[data-theme="light"] .text-emerald-300 { color: #34d399 !important; }
+[data-theme="light"] .text-indigo-400  { color: #6366f1 !important; }
+[data-theme="light"] .text-indigo-300  { color: #818cf8 !important; }
+[data-theme="light"] .text-indigo-200  { color: #a5b4fc !important; }
+[data-theme="light"] .text-rose-400    { color: #f43f5e !important; }
+[data-theme="light"] .text-red-400     { color: #ef4444 !important; }
+[data-theme="light"] .text-red-300     { color: #fca5a5 !important; }
+[data-theme="light"] .text-amber-400   { color: #f59e0b !important; }
+
 /* ==========================================================================
    Vditor 编辑即预览（Typora 风格）深度主题融合
    ========================================================================== */

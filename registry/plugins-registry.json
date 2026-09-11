@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "registryVersion": 92,
-  "updatedAt": "2026-09-11T10:24:32.487Z",
+  "registryVersion": 94,
+  "updatedAt": "2026-09-11T10:29:57.503Z",
   "plugins": [
     {
       "id": "douyin-downloader",
@@ -254,7 +254,7 @@
         {
           "version": "1.4.0",
           "channel": "stable",
-          "publishedAt": "2026-09-11T10:24:32.488Z",
+          "publishedAt": "2026-09-11T10:29:57.503Z",
           "changelog": "【v1.4.0】重大升级：集成 Vditor 所见即所得编辑内核，全面支持 Typora 级「编辑即预览」即时渲染模式与所见即所得，支持本地完全离线毫秒级冷启动",
           "engines": {
             "doujiao": ">=0.2.0",
@@ -270,9 +270,9 @@
               "platform": "any",
               "arch": "any",
               "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.4.0.zip",
-              "size": 6135143,
-              "sha256": "f6860e30e6d61b6fbcc2f873b18b74075401221c3ad044cc4639110eaf20588e",
-              "signature": "5GScL08gmkdZDjhevFeXADrh3LRUXJumqoEZSx9JOjupt0FYnQuNVqVUkdxgwYsdjY5N3c2+kdH/Jm43o/lWBw=="
+              "size": 6135240,
+              "sha256": "b80f4dc6fb79d254563790644fd89a807a25478a3ac8122030e86b1f48c279a3",
+              "signature": "YUOQQflsiy8nm86txt3hEYSu25QTB2Ic/8/hmyCAwBtchHearv8QxPSbDfZlMbrcrYpYkXW04BJfnULth720AA=="
             }
           ]
         },
@@ -739,7 +739,7 @@
         {
           "version": "1.0.3",
           "channel": "stable",
-          "publishedAt": "2026-09-11T02:26:19.684Z",
+          "publishedAt": "2026-09-11T10:29:52.258Z",
           "changelog": "【v1.0.3】常规性能优化与体验改进",
           "engines": {
             "doujiao": ">=0.2.0",
@@ -755,9 +755,9 @@
               "platform": "any",
               "arch": "any",
               "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/clipboard-history-v1.0.3.zip",
-              "size": 54964,
-              "sha256": "d1da21bf5f02d4cd4eb9c07525ad2467e2511c9b1514cc0f30b83cdcb0c16ae5",
-              "signature": "kA6HJwfbbAQRetIPnzF6aSTR03GQzOKkm/UWwkkn2PqHCcICBBXU9K+4iLDJs7BCyRiHBRfwT/FNOZAtDrGJDw=="
+              "size": 55046,
+              "sha256": "45430f1905f2bbc7d647d6d6176e47afd8505602fdbadeb922b5ec78ac794372",
+              "signature": "QFDJi+CGExjch1fIhVotjSV6aP9EM2VKhlVr46culzBdy5xTra6KozEO0hpJ7+zjlRMDbmJZsGuBXTJgLcKpCQ=="
             }
           ]
         },
