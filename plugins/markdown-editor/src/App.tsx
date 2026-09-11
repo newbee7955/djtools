@@ -564,10 +564,18 @@ export default function App(): JSX.Element {
     domRow: number,
     col: number
   ) => {
-    if (!vditorRef.current || !isVditorReadyRef.current) return
-    const md = vditorRef.current.getValue()
+    if (!vditorRef.current) { showToast('编辑器未就绪，请稍候再试'); return }
+
+    // 优先使用 React 状态中的内容（比 IR 模式 getValue() 更稳定）
+    const rawMd = activeDocRef.current?.content ?? vditorRef.current.getValue()
+    // 统一行尾为 \n，避免 Windows \r\n 干扰行解析
+    const md = rawMd.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
     const allTables = findMdTables(md)
-    if (tableIdx < 0 || tableIdx >= allTables.length) return
+    if (tableIdx < 0 || tableIdx >= allTables.length) {
+      showToast(`未找到目标表格（DOM索引 ${tableIdx}，共找到 ${allTables.length} 个表格）`)
+      return
+    }
 
     const { start, end } = allTables[tableIdx]
     const mdLines = md.split('\n')
@@ -580,7 +588,7 @@ export default function App(): JSX.Element {
       const insertAt = mdRow <= 1 ? 2 : mdRow
       rows.splice(insertAt, 0, Array(colCount).fill('  '))
     } else if (op === 'insertRowBelow') {
-      const insertAt = mdRow < 1 ? 2 : mdRow + 1
+      const insertAt = mdRow < 2 ? 2 : mdRow + 1
       rows.splice(insertAt, 0, Array(colCount).fill('  '))
     } else if (op === 'deleteRow') {
       if (rows.length <= 3) { showToast('至少需要保留一行数据'); return }
@@ -600,6 +608,8 @@ export default function App(): JSX.Element {
       ...serializeMdTable(rows).split('\n'),
       ...mdLines.slice(end + 1)
     ].join('\n')
+
+    // 同时更新 Vditor 显示 和 React 状态
     vditorRef.current.setValue(newMd)
     updateContent(newMd)
     setContextMenu(null)
