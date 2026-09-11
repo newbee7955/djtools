@@ -1,5 +1,249 @@
+@import 'vditor/dist/index.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body { margin: 0; padding: 0; }
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* 实心主题高亮按钮 (新建文档、保存、模态框提交)：强制纯白文字与优雅渐变 */
+button.bg-indigo-600,
+button[class*="bg-indigo-600"],
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]),
+.bg-indigo-600:not([class*="/"]) {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(79, 70, 229, 0.4) !important;
+  box-shadow: 0 1px 3px 0 rgba(79, 70, 229, 0.3) !important;
+}
+
+button.bg-indigo-600:hover,
+button[class*="bg-indigo-600"]:hover,
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]):hover,
+.bg-indigo-600:not([class*="/"]):hover {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%) !important;
+  box-shadow: 0 2px 6px 0 rgba(99, 102, 241, 0.4) !important;
+}
+
+/* 强制所有实心靛蓝按钮内部所有子元素、文本保持纯白 */
+button.bg-indigo-600 *,
+button[class*="bg-indigo-600"] *,
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
+.bg-indigo-600:not([class*="/"]) * {
+  color: #ffffff !important;
+}
+
+/* 亮色模式 (data-theme="light") 全局高质感浅色适配 */
+[data-theme="light"],
+[data-theme="light"] body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* 亮色模式下次级操作按钮 (新建目录、打开文件、更改目录等)：纯白底板 + 浅灰边框 + 悬浮反馈 */
+[data-theme="light"] button.bg-slate-800,
+[data-theme="light"] button.bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] button.bg-slate-800:hover,
+[data-theme="light"] button.bg-slate-900:hover {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] button.bg-slate-800 *,
+[data-theme="light"] button.bg-slate-900 * {
+  color: #334155 !important;
+}
+
+[data-theme="light"] button.bg-slate-800:hover *,
+[data-theme="light"] button.bg-slate-900:hover * {
+  color: #0f172a !important;
+}
+
+/* 亮色模式下三态视图模式切换开关 (编辑/双栏/预览) */
+[data-theme="light"] .bg-slate-900:has(> button) {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] button.bg-indigo-600,
+[data-theme="light"] button[class*="bg-indigo-600"] {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] button.bg-indigo-600 *,
+[data-theme="light"] button[class*="bg-indigo-600"] * {
+  color: #ffffff !important;
+}
+
+/* 亮色模式下左侧侧边栏及边框 */
+[data-theme="light"] .bg-slate-950 {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] .border-slate-800,
+[data-theme="light"] .border-slate-800\/80,
+[data-theme="light"] .border-slate-800\/60,
+[data-theme="light"] .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+/* 亮色模式下文档卡片激活态高亮 */
+[data-theme="light"] .bg-indigo-600\/15 {
+  background-color: #eef2ff !important;
+  border-color: #c7d2fe !important;
+}
+
+[data-theme="light"] .bg-indigo-600\/15 .text-slate-200,
+[data-theme="light"] .bg-indigo-600\/15 span {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .bg-indigo-600\/15 .text-slate-500,
+[data-theme="light"] .bg-indigo-600\/15 .font-mono {
+  color: #6366f1 !important;
+}
+
+/* 亮色模式下非激活卡片与文件夹项 */
+[data-theme="light"] .bg-slate-900\/40 {
+  background-color: #ffffff !important;
+  border-color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .bg-slate-900\/40:hover {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .bg-slate-900\/40 .text-slate-200 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .bg-slate-900\/40 .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+/* 亮色模式下工作目录路径输入区 */
+[data-theme="light"] .bg-slate-950\/80 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+/* 亮色模式下主工作区与顶部标题栏 */
+[data-theme="light"] .bg-slate-900 {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] .bg-slate-950\/90,
+[data-theme="light"] .bg-slate-950\/60 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] input.text-white {
+  color: #0f172a !important;
+}
+
+/* ==========================================================================
+   Vditor 编辑即预览（Typora 风格）深度主题融合
+   ========================================================================== */
+.vditor {
+  border: none !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  height: 100% !important;
+}
+
+.vditor--dark {
+  background-color: transparent !important;
+  color: #f1f5f9 !important;
+}
+
+.vditor-toolbar {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;
+  padding: 4px 12px !important;
+  backdrop-filter: blur(8px);
+}
+
+.vditor-toolbar__item {
+  color: #94a3b8 !important;
+  border-radius: 6px !important;
+}
+
+.vditor-toolbar__item:hover {
+  color: #f1f5f9 !important;
+  background-color: #1e293b !important;
+}
+
+.vditor-toolbar__item--current {
+  color: #818cf8 !important;
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+.vditor-content {
+  background-color: transparent !important;
+}
+
+.vditor-ir,
+.vditor-wysiwyg,
+.vditor-sv {
+  background-color: transparent !important;
+}
+
+.vditor-reset {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  line-height: 1.8 !important;
+  color: inherit !important;
+  padding: 24px 32px !important;
+}
+
+.vditor-reset h1,
+.vditor-reset h2,
+.vditor-reset h3 {
+  border-bottom-color: rgba(51, 65, 85, 0.4) !important;
+}
+
+/* 亮色模式适配 (跟随宿主 data-theme="light") */
+[data-theme="light"] .vditor {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .vditor-toolbar {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .vditor-toolbar__item {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .vditor-toolbar__item:hover {
+  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .vditor-toolbar__item--current {
+  color: #4f46e5 !important;
+  background-color: #eef2ff !important;
+}
+
+[data-theme="light"] .vditor-reset {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .vditor-reset h1,
+[data-theme="light"] .vditor-reset h2,
+[data-theme="light"] .vditor-reset h3 {
+  border-bottom-color: #e2e8f0 !important;
+}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { getSDK, WorkspaceFileItem } from '@doujiao/plugin-sdk'
+import Vditor from 'vditor'
 import { renderMarkdown } from './lib/markdown'
 import { VersionHistoryDrawer } from './components/VersionHistoryDrawer'
 
@@ -58,7 +59,13 @@ export default function App(): JSX.Element {
   })
 
   const [activeDocId, setActiveDocId] = useState<string>(() => docs[0]?.id || 'welcome-doc')
-  const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('split')
+  const [viewMode, setViewMode] = useState<'ir' | 'wysiwyg' | 'sv' | 'preview'>(() => {
+    try {
+      const saved = localStorage.getItem('doujiao_markdown_view_mode')
+      if (saved === 'ir' || saved === 'wysiwyg' || saved === 'sv' || saved === 'preview') return saved
+    } catch {}
+    return 'ir'
+  })
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [toast, setToast] = useState<string | null>(null)
   const [workspaceDir, setWorkspaceDir] = useState<string>('')
@@ -72,10 +79,14 @@ export default function App(): JSX.Element {
   const [showNewFolderModal, setShowNewFolderModal] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
 
-  const editorRef = useRef<HTMLTextAreaElement>(null)
+  const vditorContainerRef = useRef<HTMLDivElement>(null)
+  const vditorRef = useRef<Vditor | null>(null)
+  const isVditorReadyRef = useRef<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const activeDoc = docs.find((d) => d.id === activeDocId) || docs[0]
+  const activeDocRef = useRef(activeDoc)
+  activeDocRef.current = activeDoc
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -232,14 +243,19 @@ export default function App(): JSX.Element {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
-        if (!activeDoc) return
+        const doc = activeDocRef.current
+        if (!doc) return
+        const currentContent =
+          vditorRef.current && isVditorReadyRef.current
+            ? vditorRef.current.getValue()
+            : (doc.content || '')
         const sdk = getSDK()
         if (sdk?.workspace) {
-          const targetName = activeDoc.fileName || `${(activeDoc.title || '文档').replace(/[\\/:*?"<>|]/g, '_')}.md`
+          const targetName = doc.fileName || `${(doc.title || '文档').replace(/[\\/:*?"<>|]/g, '_')}.md`
           setIsDiskSaving(true)
-          await sdk.workspace.writeFile(targetName, activeDoc.content, 'markdown-editor')
+          await sdk.workspace.writeFile(targetName, currentContent, 'markdown-editor')
           if (sdk.workspace.history) {
-            await sdk.workspace.history.saveSnapshot('markdown-editor', targetName, activeDoc.content, 'auto', '手动存盘 (Ctrl+S)')
+            await sdk.workspace.history.saveSnapshot('markdown-editor', targetName, currentContent, 'auto', '手动存盘 (Ctrl+S)')
           }
           setIsDiskSaving(false)
           showToast('已存盘并生成历史快照 💾')
@@ -248,7 +264,7 @@ export default function App(): JSX.Element {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeDoc])
+  }, [])
 
   // 更换工作目录
   const handleSelectWorkspaceDir = async () => {
@@ -301,12 +317,17 @@ export default function App(): JSX.Element {
 
   // 另存为自定义位置
   const handleSaveAs = async () => {
-    if (!activeDoc) return
+    const doc = activeDocRef.current
+    if (!doc) return
+    const content =
+      vditorRef.current && isVditorReadyRef.current
+        ? vditorRef.current.getValue()
+        : (doc.content || '')
     try {
       const sdk = getSDK()
       if (sdk?.workspace?.saveFileAs) {
-        const defaultName = `${(activeDoc.title || '文档').replace(/[\\/:*?"<>|]/g, '_')}.md`
-        const res = await sdk.workspace.saveFileAs(activeDoc.content, defaultName, ['md', 'markdown'])
+        const defaultName = `${(doc.title || '文档').replace(/[\\/:*?"<>|]/g, '_')}.md`
+        const res = await sdk.workspace.saveFileAs(content, defaultName, ['md', 'markdown'])
         if (!res.canceled && res.filePath) {
           showToast(`已另存为: ${res.fileName || res.filePath}`)
         }
@@ -359,10 +380,128 @@ export default function App(): JSX.Element {
 
   // 更新当前活动文档内容
   const updateContent = (content: string) => {
+    const currentId = activeDocRef.current?.id
+    if (!currentId) return
     setDocs((prev) =>
-      prev.map((d) => (d.id === activeDoc.id ? { ...d, content, updatedAt: Date.now() } : d))
+      prev.map((d) => (d.id === currentId ? { ...d, content, updatedAt: Date.now() } : d))
     )
   }
+
+  // 初始化与模式切换时构建 Vditor 实例
+  useEffect(() => {
+    if (!vditorContainerRef.current) return
+    if (viewMode === 'preview') return
+    if (!activeDoc) return
+
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+    const targetMode = viewMode === 'wysiwyg' ? 'wysiwyg' : viewMode === 'sv' ? 'sv' : 'ir'
+
+    isVditorReadyRef.current = false
+    const vditor = new Vditor(vditorContainerRef.current, {
+      value: activeDocRef.current?.content || '',
+      mode: targetMode,
+      cdn: './vditor',
+      theme: isLight ? 'classic' : 'dark',
+      height: '100%',
+      placeholder: '在此输入 Markdown 内容，享受即时渲染沉浸式写作...',
+      preview: {
+        theme: {
+          current: isLight ? 'light' : 'dark'
+        },
+        hljs: {
+          style: isLight ? 'github' : 'atom-one-dark'
+        },
+        math: {
+          engine: 'KaTeX'
+        }
+      },
+      counter: {
+        enable: false
+      },
+      cache: {
+        enable: false
+      },
+      toolbarConfig: {
+        pin: true
+      },
+      toolbar: [
+        'headings',
+        'bold',
+        'italic',
+        'strike',
+        'link',
+        '|',
+        'list',
+        'ordered-list',
+        'check',
+        'outdent',
+        'indent',
+        '|',
+        'quote',
+        'line',
+        'code',
+        'inline-code',
+        'insert-before',
+        'insert-after',
+        '|',
+        'table',
+        'undo',
+        'redo',
+        '|',
+        'fullscreen'
+      ],
+      input(value) {
+        updateContent(value)
+      },
+      after() {
+        vditorRef.current = vditor
+        isVditorReadyRef.current = true
+        if (activeDocRef.current && vditor.getValue() !== activeDocRef.current.content) {
+          vditor.setValue(activeDocRef.current.content)
+        }
+      }
+    })
+
+    return () => {
+      isVditorReadyRef.current = false
+      try {
+        vditor.destroy()
+      } catch (err) {}
+      vditorRef.current = null
+    }
+  }, [viewMode, Boolean(activeDoc)])
+
+  // 切换当前文档时平滑同步至 Vditor
+  useEffect(() => {
+    if (vditorRef.current && isVditorReadyRef.current && activeDoc) {
+      if (vditorRef.current.getValue() !== activeDoc.content) {
+        vditorRef.current.setValue(activeDoc.content)
+      }
+    }
+  }, [activeDocId])
+
+  // 监听系统主题变化实时同步 Vditor 主题
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light'
+      if (vditorRef.current && isVditorReadyRef.current) {
+        vditorRef.current.setTheme(
+          isLight ? 'classic' : 'dark',
+          isLight ? 'light' : 'dark',
+          isLight ? 'github' : 'atom-one-dark'
+        )
+      }
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
+  }, [])
+
+  // 持久化当前视图模式偏好
+  useEffect(() => {
+    try {
+      localStorage.setItem('doujiao_markdown_view_mode', viewMode)
+    } catch {}
+  }, [viewMode])
 
   // 更新标题并重命名磁盘文件
   const updateTitle = async (title: string) => {
@@ -455,37 +594,19 @@ export default function App(): JSX.Element {
     showToast('文档已从工作目录删除')
   }
 
-  // 工具栏插入语法
-  const insertSyntax = (prefix: string, suffix: string = '', defaultPlaceholder: string = '') => {
-    const textarea = editorRef.current
-    if (!textarea || !activeDoc) return
-
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const currentText = activeDoc.content
-    const selected = currentText.substring(start, end) || defaultPlaceholder
-
-    const replacement = `${prefix}${selected}${suffix}`
-    const newContent =
-      currentText.substring(0, start) + replacement + currentText.substring(end)
-
-    updateContent(newContent)
-
-    setTimeout(() => {
-      textarea.focus()
-      const cursorPos = start + prefix.length + selected.length
-      textarea.setSelectionRange(cursorPos, cursorPos)
-    }, 0)
-  }
-
   // 导出为 .md 文件
   const handleExport = () => {
-    if (!activeDoc) return
-    const blob = new Blob([activeDoc.content || ''], { type: 'text/markdown;charset=utf-8' })
+    const doc = activeDocRef.current
+    if (!doc) return
+    const content =
+      vditorRef.current && isVditorReadyRef.current
+        ? vditorRef.current.getValue()
+        : (doc.content || '')
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${(activeDoc.title || '文档').replace(/[\\/:*?"<>|]/g, '_')}.md`
+    a.download = `${(doc.title || '文档').replace(/[\\/:*?"<>|]/g, '_')}.md`
     a.click()
     URL.revokeObjectURL(url)
     showToast('已导出为 Markdown 文件')
@@ -516,11 +637,15 @@ export default function App(): JSX.Element {
 
   // 复制渲染后的纯文本或 Markdown
   const handleCopyMarkdown = () => {
-    if (!activeDoc?.content) {
+    const content =
+      vditorRef.current && isVditorReadyRef.current
+        ? vditorRef.current.getValue()
+        : (activeDocRef.current?.content || '')
+    if (!content) {
       showToast('当前文档为空，无需复制')
       return
     }
-    navigator.clipboard.writeText(activeDoc.content).then(() => {
+    navigator.clipboard.writeText(content).then(() => {
       showToast('Markdown 源码已复制到剪贴板')
     })
   }
@@ -554,16 +679,25 @@ export default function App(): JSX.Element {
       {/* 左侧文档管理侧边栏 */}
       <div
         className={`bg-slate-950 border-r border-slate-800/80 flex flex-col transition-all duration-300 ${
-          sidebarOpen ? 'w-64 min-w-64' : 'w-0 min-w-0 opacity-0 overflow-hidden'
+          sidebarOpen ? 'w-72 min-w-72' : 'w-0 min-w-0 opacity-0 overflow-hidden'
         }`}
       >
-        <div className="p-3.5 border-b border-slate-800/80 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">📝</span>
-            <span className="font-semibold text-xs text-slate-200">我的文档</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-              {docs.length}
-            </span>
+        <div className="p-3 border-b border-slate-800/80 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xl shrink-0">📝</span>
+              <span className="font-semibold text-xs text-slate-200 whitespace-nowrap">我的文档</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono whitespace-nowrap">
+                {docs.length} 篇
+              </span>
+            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="px-1.5 py-0.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors text-[11px] whitespace-nowrap"
+              title="收起侧边栏"
+            >
+              ◀ 收起
+            </button>
           </div>
           <div className="flex items-center gap-1.5">
             <button
@@ -571,26 +705,27 @@ export default function App(): JSX.Element {
                 setNewFolderName('')
                 setShowNewFolderModal(true)
               }}
-              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1 transition-colors"
+              className="flex-1 py-1 px-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center justify-center gap-1 transition-colors whitespace-nowrap"
               title="在当前位置新建文件夹"
             >
               <span>📁+</span>
-              <span>目录</span>
+              <span>新建目录</span>
             </button>
             <button
               onClick={handleOpenFile}
-              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center gap-1 transition-colors"
+              className="flex-1 py-1 px-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs flex items-center justify-center gap-1 transition-colors whitespace-nowrap"
               title="从外部磁盘打开 Markdown 文件..."
             >
-              <span>📂 打开</span>
+              <span>📂</span>
+              <span>打开</span>
             </button>
             <button
               onClick={handleNewDoc}
-              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs flex items-center gap-1 shadow transition-colors font-medium"
+              className="flex-1 py-1 px-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs flex items-center justify-center gap-1 shadow transition-colors font-medium whitespace-nowrap"
               title="新建文档"
             >
-              <span>+</span>
-              <span>新建</span>
+              <span className="text-white font-bold leading-none">+</span>
+              <span className="text-white font-medium leading-none">新建</span>
             </button>
           </div>
         </div>
@@ -631,7 +766,7 @@ export default function App(): JSX.Element {
                 setNewFolderName('')
                 setShowNewFolderModal(true)
               }}
-              className="py-1 rounded bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-[10px] transition-colors flex items-center justify-center gap-1 font-medium"
+              className="py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] transition-colors flex items-center justify-center gap-1"
               title="在当前工作目录下新建文件夹"
             >
               <span>📁+ 新建目录</span>
@@ -807,18 +942,29 @@ export default function App(): JSX.Element {
               {/* 中间：视图模式切换（紧凑胶囊） */}
               <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs shrink-0 shadow-sm">
                 <button
-                  onClick={() => setViewMode('edit')}
+                  onClick={() => setViewMode('ir')}
                   className={`px-2.5 py-1 rounded text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
-                    viewMode === 'edit' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                    viewMode === 'ir' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
                   }`}
+                  title="即时渲染模式：Typora 风格编辑即预览，光标处展示源码，离开光标即时渲染"
                 >
-                  ✏️ 编辑
+                  ⚡ 编辑即预览
                 </button>
                 <button
-                  onClick={() => setViewMode('split')}
+                  onClick={() => setViewMode('wysiwyg')}
                   className={`px-2.5 py-1 rounded text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
-                    viewMode === 'split' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                    viewMode === 'wysiwyg' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
                   }`}
+                  title="所见即所得富文本模式"
+                >
+                  📝 所见即所得
+                </button>
+                <button
+                  onClick={() => setViewMode('sv')}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
+                    viewMode === 'sv' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="分屏双栏模式：左侧源码，右侧实时渲染"
                 >
                   🌗 双栏
                 </button>
@@ -827,8 +973,9 @@ export default function App(): JSX.Element {
                   className={`px-2.5 py-1 rounded text-xs font-medium transition-colors shrink-0 whitespace-nowrap ${
                     viewMode === 'preview' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
                   }`}
+                  title="纯净阅读预览模式"
                 >
-                  👁️ 预览
+                  👁️ 纯预览
                 </button>
               </div>
 
@@ -873,151 +1020,17 @@ export default function App(): JSX.Element {
               </div>
             </div>
 
-            {/* Markdown 语法快捷工具栏 (仅在编辑或双栏模式展示) */}
-            {viewMode !== 'preview' && (
-              <div className="h-10 px-4 bg-slate-950/60 border-b border-slate-800/60 flex items-center gap-1 overflow-x-auto select-none shrink-0">
-                <button
-                  onClick={() => insertSyntax('# ', '', '标题')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 font-bold hover:text-white"
-                  title="一级标题"
-                >
-                  H1
-                </button>
-                <button
-                  onClick={() => insertSyntax('## ', '', '标题')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 font-bold hover:text-white"
-                  title="二级标题"
-                >
-                  H2
-                </button>
-                <button
-                  onClick={() => insertSyntax('### ', '', '标题')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 font-bold hover:text-white"
-                  title="三级标题"
-                >
-                  H3
-                </button>
-                <div className="w-[1px] h-4 bg-slate-800 mx-1" />
-                <button
-                  onClick={() => insertSyntax('**', '**', '粗体文本')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 font-bold hover:text-white"
-                  title="粗体 (Ctrl+B)"
-                >
-                  B
-                </button>
-                <button
-                  onClick={() => insertSyntax('*', '*', '斜体文本')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 italic hover:text-white font-serif"
-                  title="斜体 (Ctrl+I)"
-                >
-                  I
-                </button>
-                <button
-                  onClick={() => insertSyntax('~~', '~~', '删除线')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 line-through hover:text-white"
-                  title="删除线"
-                >
-                  S
-                </button>
-                <button
-                  onClick={() => insertSyntax('`', '`', '代码')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 font-mono hover:text-white"
-                  title="行内代码"
-                >
-                  &lt;/&gt;
-                </button>
-                <div className="w-[1px] h-4 bg-slate-800 mx-1" />
-                <button
-                  onClick={() => insertSyntax('- ', '', '列表项')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 hover:text-white"
-                  title="无序列表"
-                >
-                  • 列表
-                </button>
-                <button
-                  onClick={() => insertSyntax('1. ', '', '列表项')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 hover:text-white"
-                  title="有序列表"
-                >
-                  1. 列表
-                </button>
-                <button
-                  onClick={() => insertSyntax('- [ ] ', '', '代办任务')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 hover:text-white"
-                  title="任务列表"
-                >
-                  ☑ 任务
-                </button>
-                <button
-                  onClick={() => insertSyntax('> ', '', '引用内容')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 hover:text-white"
-                  title="引用块"
-                >
-                  “ 引用
-                </button>
-                <div className="w-[1px] h-4 bg-slate-800 mx-1" />
-                <button
-                  onClick={() => insertSyntax('[', '](https://example.com)', '链接文本')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 hover:text-white"
-                  title="插入链接"
-                >
-                  🔗 链接
-                </button>
-                <button
-                  onClick={() => insertSyntax('![图片描述](', ')', 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 hover:text-white"
-                  title="插入图片"
-                >
-                  🖼️ 图片
-                </button>
-                <button
-                  onClick={() => insertSyntax('```javascript\n', '\n```', '// 在此编写代码')}
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 hover:text-white"
-                  title="代码块"
-                >
-                  📦 代码块
-                </button>
-                <button
-                  onClick={() =>
-                    insertSyntax(
-                      '| 列 1 | 列 2 |\n| :--- | :--- |\n| 单元格 1 | 单元格 2 |\n'
-                    )
-                  }
-                  className="px-2 py-1 rounded hover:bg-slate-800 text-xs text-slate-300 hover:text-white"
-                  title="插入表格"
-                >
-                  📊 表格
-                </button>
-              </div>
-            )}
-
             {/* 编辑与预览核心工作区 */}
-            <div className="flex-1 flex overflow-hidden">
-              {/* 编辑器输入栏 */}
-              {(viewMode === 'edit' || viewMode === 'split') && (
-                <div
-                  className={`h-full flex flex-col ${
-                    viewMode === 'split' ? 'w-1/2 border-r border-slate-800/80' : 'w-full'
-                  }`}
-                >
-                  <textarea
-                    ref={editorRef}
-                    value={activeDoc.content}
-                    onChange={(e) => updateContent(e.target.value)}
-                    placeholder="在此输入 Markdown 内容，支持快捷语法与双栏实时高亮预览..."
-                    className="w-full h-full p-6 bg-transparent resize-none focus:outline-none font-mono text-sm leading-relaxed text-slate-100 placeholder-slate-600 selection:bg-indigo-500/30"
-                    spellCheck={false}
-                  />
-                </div>
-              )}
+            <div className="flex-1 flex overflow-hidden relative">
+              {/* Vditor 容器（即时渲染 / 所见即所得 / 双栏分屏） */}
+              <div
+                ref={vditorContainerRef}
+                className={`w-full h-full ${viewMode === 'preview' ? 'hidden' : 'block'}`}
+              />
 
-              {/* 实时渲染预览栏 */}
-              {(viewMode === 'preview' || viewMode === 'split') && (
-                <div
-                  className={`h-full overflow-y-auto p-6 bg-slate-900/40 select-text ${
-                    viewMode === 'split' ? 'w-1/2' : 'w-full'
-                  }`}
-                >
+              {/* 纯预览模式 */}
+              {viewMode === 'preview' && (
+                <div className="w-full h-full overflow-y-auto p-8 bg-slate-900/40 select-text">
                   <div
                     className="max-w-3xl mx-auto prose prose-invert"
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(activeDoc.content) }}
@@ -1206,6 +1219,9 @@ export default function App(): JSX.Element {
           currentContent={activeDoc.content}
           onRestoreContent={(content) => {
             updateContent(content)
+            if (vditorRef.current && isVditorReadyRef.current) {
+              vditorRef.current.setValue(content)
+            }
             showToast('已恢复历史版本内容 ↩️')
           }}
           onShowToast={showToast}

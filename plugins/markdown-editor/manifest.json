@@ -3,11 +3,11 @@
   "id": "markdown-editor",
   "publisher": "doujiao-official",
   "name": "Markdown 编辑器",
-  "version": "1.3.3",
-  "description": "高效双栏 Markdown 写作与预览，支持多层级子目录新建与分类管理、本地时间轴快照、Git 版本控制与 Diff 对照、自定义另存为路径与默认保存目录配置",
+  "version": "1.4.0",
+  "description": "专业级 Markdown 写作套件，支持 Typora 式「编辑即预览」即时渲染与所见即所得、多层级子目录分类管理、本地时间轴快照、Git 版本控制与 Diff 对照",
   "icon": "📝",
   "engines": {
-    "doujiao": ">=0.2.0 <0.3.0",
+    "doujiao": ">=0.2.0",
     "pluginApi": "^1.0.0"
   },
   "entrypoints": {
@@ -18,5 +18,5 @@
       "capability": "workspace"
     }
   ],
-  "changelog": "【v1.3.3】新增删除 Markdown 文档防误触二次确认提示，明确显示待删除文档标题与文件名，防止意外误删文件"
+  "changelog": "【v1.4.0】重大升级：集成 Vditor 所见即所得编辑内核，全面支持 Typora 级「编辑即预览」即时渲染模式与所见即所得，支持本地完全离线毫秒级冷启动"
 }

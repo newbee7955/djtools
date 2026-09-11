@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "registryVersion": 76,
-  "updatedAt": "2026-09-10T10:58:58.502Z",
+  "registryVersion": 87,
+  "updatedAt": "2026-09-11T07:13:59.431Z",
   "plugins": [
     {
       "id": "douyin-downloader",
@@ -248,9 +248,59 @@
       "id": "markdown-editor",
       "publisher": "doujiao-official",
       "name": "Markdown 编辑器",
-      "description": "高效双栏 Markdown 写作与预览，支持多层级子目录新建与分类管理、本地时间轴快照、Git 版本控制与 Diff 对照、自定义另存为路径与默认保存目录配置",
+      "description": "专业级 Markdown 写作套件，支持 Typora 式「编辑即预览」即时渲染与所见即所得、多层级子目录分类管理、本地时间轴快照、Git 版本控制与 Diff 对照",
       "icon": "📝",
       "releases": [
+        {
+          "version": "1.4.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T07:13:59.431Z",
+          "changelog": "【v1.4.0】重大升级：集成 Vditor 所见即所得编辑内核，全面支持 Typora 级「编辑即预览」即时渲染模式与所见即所得，支持本地完全离线毫秒级冷启动",
+          "engines": {
+            "doujiao": ">=0.2.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.4.0.zip",
+              "size": 6172718,
+              "sha256": "18a86d4c22b472125cf2c20592f0d8c9295fa71ecec3e88acc02fb8a667914d1",
+              "signature": "79d/tGD/22+H0c4gel0RkUBB6gfBXyX4K/MTh4RCMrdKmX7govkcsU7kuOR3cH0tblySmKCW8wPKq5ucCmQmDw=="
+            }
+          ]
+        },
+        {
+          "version": "1.3.4",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T02:43:16.223Z",
+          "changelog": "【v1.3.4】优化左侧侧边栏宽度与顶部操作区两行布局，解决浅色模式下「+ 新建」等高亮操作按钮文字看不清的问题，统一次级操作按钮风格",
+          "engines": {
+            "doujiao": ">=0.2.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/markdown-editor-v1.3.4.zip",
+              "size": 66734,
+              "sha256": "77f8616077fa645ae745213597f249d36b9f4d70245949fda5d8e6e94b6ecae2",
+              "signature": "7Eo4uK76hcny08XSqwyhkJlJQb+apzOlUtlZhP4cAtcRMrg7XvjbghosOQYJAocOlXs3+AkVN7DgvvKdXwjUDw=="
+            }
+          ]
+        },
         {
           "version": "1.3.3",
           "channel": "stable",
@@ -428,9 +478,59 @@
       "id": "notepad",
       "publisher": "doujiao-official",
       "name": "轻便记事本",
-      "description": "零负担极速纯文本随手记，支持文件级密码强加密保护、多层级子目录新建与分类管理、本地时间轴快照、Git 版本控制与 Diff 对照、自定义另存为路径与默认保存目录配置",
+      "description": "零负担极速纯文本随手记，支持全局主密码文件级强加密保护、多层级子目录新建与分类管理、本地时间轴快照、Git 版本控制与 Diff 对照、自定义另存为路径与默认保存目录配置",
       "icon": "🗒️",
       "releases": [
+        {
+          "version": "1.4.2",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T02:32:55.535Z",
+          "changelog": "【v1.4.1】重构记事本密码锁机制：采用全局主密码统一保护，设置一次全局生效；会话期解锁一次全部加密便签立即可读可写，告别每个文件重复输入密码；开启加密一键直接落盘，支持密码修改、清除与自动锁定策略配置",
+          "engines": {
+            "doujiao": ">=0.2.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.4.2.zip",
+              "size": 71403,
+              "sha256": "fb669fd1e002074d935133fd4236a72c9c34fcce170b9ba34103694298c4bb99",
+              "signature": "aU/Sr1QR7S+HTR2ttFXrapSmEsSZeAw42EihSj4AzGbHzPwaDp6QHHLGZcmtUXS7Sm2vf1vSCS/XOUYAX++sCg=="
+            }
+          ]
+        },
+        {
+          "version": "1.4.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T01:04:51.900Z",
+          "changelog": "【v1.4.1】重构记事本密码锁机制：采用全局主密码统一保护，设置一次全局生效；会话期解锁一次全部加密便签立即可读可写，告别每个文件重复输入密码；开启加密一键直接落盘，支持密码修改、清除与自动锁定策略配置",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/notepad-v1.4.1.zip",
+              "size": 71147,
+              "sha256": "e4896973040f527d0b7ad8761196f5900ff4b98ddf61bfed2048fa83ee49e65f",
+              "signature": "29VyRrVzFG3KB6N7ZFgJGXKGbZdrZ2KJLrBvyEV8cBFcbYe+ALf1X/hyWqBDCfCkWjL5aM2k6GYDfMDK0nv7Cw=="
+            }
+          ]
+        },
         {
           "version": "1.4.0",
           "channel": "stable",
@@ -636,6 +736,31 @@
       "description": "系统剪贴板实时监听、文本与图片历史记录持久化、一键回写复制、常用置顶与快捷检索",
       "icon": "📋",
       "releases": [
+        {
+          "version": "1.0.3",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T02:26:19.684Z",
+          "changelog": "【v1.0.3】常规性能优化与体验改进",
+          "engines": {
+            "doujiao": ">=0.2.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "clipboard.history"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/clipboard-history-v1.0.3.zip",
+              "size": 54964,
+              "sha256": "d1da21bf5f02d4cd4eb9c07525ad2467e2511c9b1514cc0f30b83cdcb0c16ae5",
+              "signature": "kA6HJwfbbAQRetIPnzF6aSTR03GQzOKkm/UWwkkn2PqHCcICBBXU9K+4iLDJs7BCyRiHBRfwT/FNOZAtDrGJDw=="
+            }
+          ]
+        },
         {
           "version": "1.0.2",
           "channel": "stable",
@@ -1010,9 +1135,40 @@
       "id": "image-editor",
       "publisher": "doujiao-official",
       "name": "轻量图片编辑",
-      "description": "极速轻量图片标注与涂鸦剪裁工具，支持剪贴板粘贴与拖拽导入、常用标注（矩形、圆形、箭头、自由画笔、荧光笔、序号标记、文字、隐私马赛克）、快速剪裁与翻转、一键复制到剪贴板与保存至工作目录",
+      "description": "极速轻量图片标注与涂鸦剪裁工具，支持屏幕截图（手动点击与全局快捷键 Alt+Shift+A）、剪贴板粘贴与拖拽导入、常用标注（矩形、圆形、箭头、自由画笔、荧光笔、序号标记、文字、隐私马赛克）、快速剪裁与翻转、一键复制到剪贴板与保存至工作目录",
       "icon": "🖼️",
       "releases": [
+        {
+          "version": "1.1.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T01:17:15.420Z",
+          "changelog": "【v1.1.0】新增屏幕截图功能：支持在工具栏及引导页一键手动截图，支持系统级全局快捷键（Alt+Shift+A / Ctrl+Alt+A）与应用内快捷键划选截图；截图完成直接载入画布涂鸦编辑，并自动同步存入系统剪贴板",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "workspace"
+            },
+            {
+              "capability": "clipboard.history"
+            },
+            {
+              "capability": "screen.capture"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/image-editor-v1.1.0.zip",
+              "size": 65719,
+              "sha256": "8e1bbcc41936c67f644784b29dc22fae7c91d1892b037e08b11b6931b8e3c3a1",
+              "signature": "V+UKGykVO8gd5tt79CulP1IM26IBF75aMa8V5Ya0xvRUdxiEZi/uB8q/+h6se9v0AkiRsD9T2kQXzBMjVRagBg=="
+            }
+          ]
+        },
         {
           "version": "1.0.1",
           "channel": "stable",
@@ -1187,6 +1343,130 @@
               "size": 61707,
               "sha256": "c0d2d86754051df7f1c38f6b0cc474fc6ad4a1e1d55a6ad6d9a288fe2625f48a",
               "signature": "DE/09OfBhBh1e0aosRMpc1UtQUNPDiDAp3JJO8HlhJmiH26uoEsLogyx+3fQoh8SJeJzhJrRSofqIFlqZJa4Dw=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dev-toys",
+      "publisher": "doujiao-official",
+      "name": "DevToys 极客百宝箱",
+      "description": "极客与开发者离线瑞士军刀：JSON/YAML 格式化与校验、Base64/URL/JWT 编解码、哈希加解密、时间戳/Cron/正则调试、UUID/高强密码生成、文本 Diff 比对与二维码生成",
+      "icon": "🛠️",
+      "releases": [
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T03:11:16.043Z",
+          "changelog": "【v1.0.0】常规性能优化与体验改进",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "clipboard.history"
+            },
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/dev-toys-v1.0.0.zip",
+              "size": 97783,
+              "sha256": "b746f2779b9bb7c095fbf5089730bc1d932e4c68dee6a239b7f5ec2f73fe6782",
+              "signature": "VTDbd8ZbQY32sPy53RZLLjQwn/2xCVTDJXwBNZ0zmrvmSh0GzA2zMtJvyUK4fFP30L6QVbTqTOiaFQRl6Y+MCA=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "media-converter",
+      "publisher": "doujiao-official",
+      "name": "音视频转换",
+      "description": "基于宿主 FFmpeg 的多媒体处理工坊：支持视频格式转码、音频提取与转换、视频转高质量调色板 GIF、无损片段快剪、视频极限体积压缩与批量转换任务",
+      "icon": "🎬",
+      "releases": [
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T03:12:44.062Z",
+          "changelog": "【v1.0.0】常规性能优化与体验改进",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "media.convert"
+            },
+            {
+              "capability": "workspace"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/media-converter-v1.0.0.zip",
+              "size": 56522,
+              "sha256": "f3c6d1ab66b9ec0933655319ffb4824c9b8a59c4c0e56c46adf0f9d7eb29719f",
+              "signature": "7hGNinkf7kmUSxi2hyxY7jhiJs5qdV9jmOf+Fw3rvs226kizo60xLxFzsLBu3BGZcno94AXSNlThHqqjfW9SCg=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ocr-recognizer",
+      "publisher": "doujiao-official",
+      "name": "OCR 文字识别",
+      "description": "高效屏幕截图与图片文字识别工具：支持一键划选屏幕截图识别、剪贴板图片粘贴、Tesseract 离线引擎与自定义 AI Vision 双模式、段落排版整理、单行复制与文本导出",
+      "icon": "🔍",
+      "releases": [
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-09-11T06:44:44.647Z",
+          "changelog": "【v1.0.0】常规性能优化与体验改进",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "screen.capture"
+            },
+            {
+              "capability": "clipboard.history"
+            },
+            {
+              "capability": "workspace"
+            },
+            {
+              "capability": "network.request",
+              "hosts": [
+                "*"
+              ],
+              "methods": [
+                "GET",
+                "POST"
+              ]
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/ocr-recognizer-v1.0.0.zip",
+              "size": 16996099,
+              "sha256": "7b035828ac485380a825c6b60ae43a2b622c7430a4c2ea30f8bfac1110d6c9f7",
+              "signature": "ww5+lLAf2PqXgMuHTfbAf6lWEDF4DR5/9irVsB3SdSd0EKzUADGNuO1mFVsAUNyPlr73svdwlah6ELx6BryjBw=="
             }
           ]
         }
