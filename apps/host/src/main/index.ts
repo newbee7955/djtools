@@ -11,14 +11,17 @@ import { registerHostIpc } from './ipc/host-api'
 import { ProxyManager } from './network/proxy-manager'
 import { AppTrayManager } from './tray'
 
-// Windows 控制台编码加固：自动将终端代码页切换为 UTF-8 (65001)，解决终端中文日志乱码
-if (process.platform === 'win32') {
+// Windows 控制台编码加固：自动将终端代码页切换为 UTF-8 (65001)，仅在开发模式下生效
+if (process.platform === 'win32' && is.dev) {
   try {
     execSync('chcp 65001>nul 2>&1')
   } catch {}
   process.env.LANG = 'zh_CN.UTF-8'
   process.env.LC_ALL = 'zh_CN.UTF-8'
 }
+
+// 统一设定应用名称，确保 userData 目录一致为 %APPDATA%/doujiao
+app.setName('doujiao')
 
 // 初始化结构化日志系统 (自动接管 console.log 并以 UTF-8 记录到 %APPDATA%/doujiao/logs/main.log)
 try {

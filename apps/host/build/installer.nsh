@@ -1,17 +1,23 @@
 !macro customCheckAppRunning
-  # 自定义运行检查：尝试正常关闭一次，遇到无响应/僵尸进程不进行弹窗死循环死锁
-  DetailPrint "检查是否有正在运行的实例..."
-  !ifdef INSTALL_MODE_PER_ALL_USERS
-    nsExec::Exec `taskkill /f /im "${APP_EXECUTABLE_FILENAME}"`
-  !else
-    nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "${APP_EXECUTABLE_FILENAME}"`
-  !endif
+  # 自定义运行检查：彻底终止运行中的旧实例与僵尸进程，防止文件被占用导致写入失败
+  DetailPrint "检查并关闭可能正在运行的实例..."
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "${APP_EXECUTABLE_FILENAME}" /t`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "doujiao.exe" /t`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "豆角工具箱.exe" /t`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "electron.exe" /t`
   Sleep 500
 !macroend
 
 !macro customInstall
-  # 如果旧 exe 文件被系统驱动或残留句柄锁定，将其移开重命名，确保新二进制提取写入 100% 成功
-  IfFileExists "$INSTDIR\${APP_EXECUTABLE_FILENAME}" 0 +3
-    Rename "$INSTDIR\${APP_EXECUTABLE_FILENAME}" "$INSTDIR\${APP_EXECUTABLE_FILENAME}.old"
+  # 安装完成后清理历史残留的临时文件（严禁重命名已释放的新 exe）
+  ${if} ${FileExists} "$INSTDIR\${APP_EXECUTABLE_FILENAME}.old"
     Delete /REBOOTOK "$INSTDIR\${APP_EXECUTABLE_FILENAME}.old"
+  ${endif}
+!macroend
+
+!macro customUnInstall
+  # 卸载前先确保进程退出
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "${APP_EXECUTABLE_FILENAME}" /t`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "doujiao.exe" /t`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "豆角工具箱.exe" /t`
 !macroend

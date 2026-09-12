@@ -1,5 +1,6 @@
 appId: com.doujiao.app
 productName: 豆角工具箱
+executableName: doujiao
 electronVersion: 33.4.11
 copyright: Copyright © 2026 Doujiao Team
 directories:
@@ -15,6 +16,7 @@ extraResources:
     to: registry
 win:
   icon: build/icon.ico
+  executableName: doujiao
   target:
     - target: nsis
       arch:
@@ -30,6 +32,6 @@ nsis:
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
   installerHeaderIcon: build/icon.ico
-  artifactName: "${productName}-Setup-${version}.${ext}"
+  artifactName: "djtools-Setup-${version}.${ext}"
   include: build/installer.nsh
 
