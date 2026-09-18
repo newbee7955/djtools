@@ -1,0 +1,30 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "douyin-downloader",
+  "publisher": "doujiao-official",
+  "name": "抖音视频/合集下载器",
+  "version": "1.2.1",
+  "description": "支持抖音单视频、主页作品、合集与专题批量下载，支持多清晰度/分辨率流自主选择与无水印解析",
+  "icon": "assets/icon.png",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "network.request",
+      "hosts": ["www.douyin.com", "*.douyinvod.com", "*.amemv.com"],
+      "methods": ["GET", "POST"]
+    },
+    {
+      "capability": "download.enqueue"
+    },
+    {
+      "capability": "browser.login",
+      "domain": "douyin.com"
+    }
+  ]
+}

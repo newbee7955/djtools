@@ -1,0 +1,15 @@
+node_modules
+dist
+out
+release
+*.part
+*.log
+.DS_Store
+*.local
+scripts/.keys
+*.pem
+*.key
+temp_asar/
+apps/host/native/**/build/
+services/*.zip
+*.obj

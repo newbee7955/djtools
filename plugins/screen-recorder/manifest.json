@@ -1,0 +1,27 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "screen-recorder",
+  "publisher": "doujiao-official",
+  "name": "屏幕录制与 GIF",
+  "version": "1.0.0",
+  "description": "录制选定区域或当前屏幕，导出 MP4 视频或轻量 GIF 动图",
+  "icon": "⏺️",
+  "engines": {
+    "doujiao": ">=0.4.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "screen.record"
+    },
+    {
+      "capability": "workspace"
+    }
+  ],
+  "requires": {
+    "host.media.ffmpeg": ">=6 <8"
+  }
+}

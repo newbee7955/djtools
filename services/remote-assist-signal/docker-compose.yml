@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  signal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: doujiao-remote-signal
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - TURN_SECRET=${TURN_SECRET:-doujiao_remote_assist_turn_secret_2026_dev}
+      - TURN_HOST=${TURN_HOST:-117.72.108.46}
+      - SIGNAL_AUTH_TOKEN=${SIGNAL_AUTH_TOKEN:-}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  coturn:
+    image: coturn/coturn:latest
+    container_name: doujiao-remote-turn
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    environment:
+      - TURN_SECRET=${TURN_SECRET:-doujiao_remote_assist_turn_secret_2026_dev}
+      - TURN_HOST=${TURN_HOST:-117.72.108.46}
+    command:
+      - "-c"
+      - "/etc/coturn/turnserver.conf"
+      - "--static-auth-secret=${TURN_SECRET:-doujiao_remote_assist_turn_secret_2026_dev}"
+      - "--realm=${TURN_HOST:-117.72.108.46}"
+      - "--external-ip=${TURN_HOST:-117.72.108.46}"
+      - "--listening-port=3478"
+      - "--min-port=49152"
+      - "--max-port=65535"

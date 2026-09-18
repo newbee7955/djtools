@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* 优雅半透明暗色滚动条 */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+/* 亮色模式 (data-theme="light") 全局样式适配 */
+[data-theme="light"],
+[data-theme="light"] body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* 主色调高亮按钮在任何主题下都强制保持纯白文字与高对比度 */
+.text-white,
+[data-theme="light"] .text-white,
+[data-theme="light"] button.bg-indigo-600,
+[data-theme="light"] button.bg-indigo-600 *,
+[data-theme="light"] button.bg-sky-600,
+[data-theme="light"] button.bg-sky-600 * {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] button.bg-indigo-600 {
+  background-color: #4f46e5 !important;
+}
+
+[data-theme="light"] button.bg-indigo-600:hover {
+  background-color: #4338ca !important;
+}
+
+/* 亮色模式下的背景与卡片容器 */
+[data-theme="light"] .bg-slate-950 {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] .bg-slate-900,
+[data-theme="light"] .bg-slate-900\/40,
+[data-theme="light"] .bg-slate-900\/60,
+[data-theme="light"] .bg-slate-900\/80,
+[data-theme="light"] .bg-slate-900\/90 {
+  background-color: #ffffff !important;
+}
+
+/* 次级通用按钮在亮色模式下的样式 */
+[data-theme="light"] button.bg-slate-800,
+[data-theme="light"] button.bg-slate-800\/80 {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] button.bg-slate-800:hover,
+[data-theme="light"] button.bg-slate-800\/80:hover {
+  background-color: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+/* 边框在亮色模式下 */
+[data-theme="light"] .border-slate-800,
+[data-theme="light"] .border-slate-800\/60,
+[data-theme="light"] .border-slate-800\/80,
+[data-theme="light"] .border-slate-700,
+[data-theme="light"] .border-slate-700\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+/* 文本在亮色模式下 */
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200,
+[data-theme="light"] .text-slate-300 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .text-slate-400 {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .text-slate-500 {
+  color: #94a3b8 !important;
+}

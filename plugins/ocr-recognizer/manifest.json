@@ -1,0 +1,32 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "ocr-recognizer",
+  "publisher": "doujiao-official",
+  "name": "OCR 文字识别",
+  "version": "1.0.0",
+  "description": "高效屏幕截图与图片文字识别工具：支持一键划选屏幕截图识别、剪贴板图片粘贴、Tesseract 离线引擎与自定义 AI Vision 双模式、段落排版整理、单行复制与文本导出",
+  "icon": "🔍",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "screen.capture"
+    },
+    {
+      "capability": "clipboard.history"
+    },
+    {
+      "capability": "workspace"
+    },
+    {
+      "capability": "network.request",
+      "hosts": ["*"],
+      "methods": ["GET", "POST"]
+    }
+  ]
+}

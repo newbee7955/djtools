@@ -1,0 +1,369 @@
+@import 'vditor/dist/index.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* 实心主题高亮按钮 (新建文档、保存、模态框提交)：强制纯白文字与优雅渐变 */
+button.bg-indigo-600,
+button[class*="bg-indigo-600"],
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]),
+.bg-indigo-600:not([class*="/"]) {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(79, 70, 229, 0.4) !important;
+  box-shadow: 0 1px 3px 0 rgba(79, 70, 229, 0.3) !important;
+}
+
+button.bg-indigo-600:hover,
+button[class*="bg-indigo-600"]:hover,
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]):hover,
+.bg-indigo-600:not([class*="/"]):hover {
+  background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%) !important;
+  box-shadow: 0 2px 6px 0 rgba(99, 102, 241, 0.4) !important;
+}
+
+/* 强制所有实心靛蓝按钮内部所有子元素、文本保持纯白 */
+button.bg-indigo-600 *,
+button[class*="bg-indigo-600"] *,
+button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
+.bg-indigo-600:not([class*="/"]) * {
+  color: #ffffff !important;
+}
+
+/* 亮色模式 (data-theme="light") 全局高质感浅色适配 */
+[data-theme="light"],
+[data-theme="light"] body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* 亮色模式下次级操作按钮 (新建目录、打开文件、更改目录等)：纯白底板 + 浅灰边框 + 悬浮反馈 */
+[data-theme="light"] button.bg-slate-800,
+[data-theme="light"] button.bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] button.bg-slate-800:hover,
+[data-theme="light"] button.bg-slate-900:hover {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] button.bg-slate-800 *,
+[data-theme="light"] button.bg-slate-900 * {
+  color: #334155 !important;
+}
+
+[data-theme="light"] button.bg-slate-800:hover *,
+[data-theme="light"] button.bg-slate-900:hover * {
+  color: #0f172a !important;
+}
+
+/* 亮色模式下三态视图模式切换开关 (编辑/双栏/预览) */
+[data-theme="light"] .bg-slate-900:has(> button) {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] button.bg-indigo-600,
+[data-theme="light"] button[class*="bg-indigo-600"] {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] button.bg-indigo-600 *,
+[data-theme="light"] button[class*="bg-indigo-600"] * {
+  color: #ffffff !important;
+}
+
+/* 亮色模式下左侧侧边栏及边框 */
+[data-theme="light"] .bg-slate-950 {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] .border-slate-800,
+[data-theme="light"] .border-slate-800\/80,
+[data-theme="light"] .border-slate-800\/60,
+[data-theme="light"] .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+/* 亮色模式下文档卡片激活态高亮 */
+[data-theme="light"] .bg-indigo-600\/15 {
+  background-color: #eef2ff !important;
+  border-color: #c7d2fe !important;
+}
+
+[data-theme="light"] .bg-indigo-600\/15 .text-slate-200,
+[data-theme="light"] .bg-indigo-600\/15 span {
+  color: #1e1b4b !important;
+}
+
+[data-theme="light"] .bg-indigo-600\/15 .text-slate-500,
+[data-theme="light"] .bg-indigo-600\/15 .font-mono {
+  color: #6366f1 !important;
+}
+
+/* 亮色模式下非激活卡片与文件夹项 */
+[data-theme="light"] .bg-slate-900\/40 {
+  background-color: #ffffff !important;
+  border-color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .bg-slate-900\/40:hover {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .bg-slate-900\/40 .text-slate-200 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .bg-slate-900\/40 .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+/* 亮色模式下工作目录路径输入区 */
+[data-theme="light"] .bg-slate-950\/80 {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+/* 亮色模式下主工作区与顶部标题栏 */
+[data-theme="light"] .bg-slate-900 {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] .bg-slate-950\/90,
+[data-theme="light"] .bg-slate-950\/60 {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] input.text-white {
+  color: #0f172a !important;
+}
+
+/* ─────────────────────────────────────────────────────
+   亮色模式：body 的 color:!important 会级联覆盖所有
+   text-* 类，需要单独声明保留有色文字（按钮、标签等）。
+   ───────────────────────────────────────────────────── */
+/* 深色背景按钮上的白色文字 */
+[data-theme="light"] button.text-white,
+[data-theme="light"] .text-white:not(input) {
+  color: #ffffff !important;
+}
+/* 各种强调色标签 */
+[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-emerald-500 { color: #10b981 !important; }
+[data-theme="light"] .text-emerald-300 { color: #34d399 !important; }
+[data-theme="light"] .text-indigo-400  { color: #6366f1 !important; }
+[data-theme="light"] .text-indigo-300  { color: #818cf8 !important; }
+[data-theme="light"] .text-indigo-200  { color: #a5b4fc !important; }
+[data-theme="light"] .text-rose-400    { color: #f43f5e !important; }
+[data-theme="light"] .text-red-400     { color: #ef4444 !important; }
+[data-theme="light"] .text-red-300     { color: #fca5a5 !important; }
+[data-theme="light"] .text-amber-400   { color: #f59e0b !important; }
+
+/* ==========================================================================
+   Vditor 编辑即预览（Typora 风格）深度主题融合
+   ========================================================================== */
+
+/* 外层宿主容器：必须 flex 列布局才能让 Vditor 100% 撑满 */
+[data-vditor-host] {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Vditor 根容器 */
+.vditor {
+  border: none !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.vditor--dark {
+  background-color: transparent !important;
+  color: #f1f5f9 !important;
+}
+
+/* 内容区：必须 flex:1 才能撑开剩余高度 */
+.vditor-content {
+  background-color: transparent !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.vditor-toolbar {
+  background-color: rgba(15, 23, 42, 0.75) !important;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;
+  padding: 4px 12px !important;
+  backdrop-filter: blur(8px);
+  flex-shrink: 0 !important;
+  width: 100% !important;
+}
+
+.vditor-toolbar__item {
+  color: #94a3b8 !important;
+  border-radius: 6px !important;
+}
+
+.vditor-toolbar__item:hover {
+  color: #f1f5f9 !important;
+  background-color: #1e293b !important;
+}
+
+.vditor-toolbar__item--current {
+  color: #818cf8 !important;
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+.vditor-ir,
+.vditor-wysiwyg,
+.vditor-sv {
+  background-color: transparent !important;
+  width: 100% !important;
+  min-height: 0 !important;
+}
+
+/* 分屏双栏容器 */
+.vditor-sv__editor,
+.vditor-sv__preview {
+  min-height: 0 !important;
+}
+
+.vditor-reset {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  line-height: 1.8 !important;
+  color: inherit !important;
+  padding: 24px 32px !important;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.vditor-reset h1,
+.vditor-reset h2,
+.vditor-reset h3 {
+  border-bottom-color: rgba(51, 65, 85, 0.4) !important;
+}
+
+/* 亮色模式适配 (跟随宿主 data-theme="light") */
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200 {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .text-slate-300,
+[data-theme="light"] .text-slate-400 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .vditor {
+  color: #0f172a !important;
+  --textarea-background-color: #ffffff !important;
+  --panel-background-color: #ffffff !important;
+}
+
+[data-theme="light"] .vditor,
+[data-theme="light"] .vditor-content,
+[data-theme="light"] .vditor-ir,
+[data-theme="light"] .vditor-sv,
+[data-theme="light"] .vditor-reset,
+[data-theme="light"] pre.vditor-reset,
+[data-theme="light"] .vditor-ir pre.vditor-reset,
+[data-theme="light"] .vditor-ir pre.vditor-reset:focus {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .vditor--dark {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .vditor-toolbar {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .vditor-toolbar__item {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .vditor-toolbar__item:hover {
+  color: #0f172a !important;
+  background-color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .vditor-toolbar__item--current {
+  color: #4f46e5 !important;
+  background-color: #eef2ff !important;
+}
+
+[data-theme="light"] .vditor-reset {
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .vditor-reset h1,
+[data-theme="light"] .vditor-reset h2,
+[data-theme="light"] .vditor-reset h3 {
+  border-bottom-color: #e2e8f0 !important;
+}
+
+/* 右键菜单在亮色模式下的高质感适配 */
+[data-theme="light"] .context-menu-box {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-btn {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-btn:hover {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-danger {
+  color: #e11d48 !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-danger:hover {
+  background-color: #ffe4e6 !important;
+  color: #be123c !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-label {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .context-menu-box .context-menu-divider {
+  border-color: #e2e8f0 !important;
+}

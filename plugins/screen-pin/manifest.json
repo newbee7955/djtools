@@ -1,0 +1,24 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "screen-pin",
+  "publisher": "doujiao-official",
+  "name": "屏幕贴图标注",
+  "version": "1.0.0",
+  "description": "桌面置顶贴图神器，支持滚轮缩放、透明度调节、鼠标穿透临摹、就地高级涂鸦标注与色值吸取",
+  "icon": "📌",
+  "engines": {
+    "doujiao": ">=0.4.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "screen.pin"
+    },
+    {
+      "capability": "clipboard.history"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "drop-shelf",
+  "publisher": "doujiao-official",
+  "name": "桌面文件暂存岛",
+  "version": "1.0.0",
+  "description": "桌面边缘轻量滑出式文件暂存岛，支持任意文件/图片/文本拖入驻留、原生拖拽甩出、一键ZIP打包与跨屏接力",
+  "icon": "🏝️",
+  "engines": {
+    "doujiao": ">=0.4.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "drop.shelf"
+    },
+    {
+      "capability": "clipboard.history"
+    }
+  ]
+}

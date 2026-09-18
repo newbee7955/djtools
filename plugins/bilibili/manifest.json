@@ -1,0 +1,39 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "bilibili-downloader",
+  "publisher": "doujiao-official",
+  "name": "B站视频/多P选集下载器",
+  "version": "1.0.2",
+  "description": "支持 B 站高清视频解析、清晰度自主选择(1080P60/1080P/720P等)、分P/连载选集批量提取与自动混流",
+  "icon": "assets/icon.png",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "network.request",
+      "hosts": [
+        "api.bilibili.com",
+        "www.bilibili.com",
+        "b23.tv",
+        "*.bilivideo.com",
+        "*.hdslb.com"
+      ],
+      "methods": ["GET", "POST"]
+    },
+    {
+      "capability": "download.enqueue",
+      "formats": ["mp4", "m4s", "flv"]
+    },
+    {
+      "capability": "media.merge"
+    }
+  ],
+  "requires": {
+    "host.media.ffmpeg": ">=6 <8"
+  }
+}

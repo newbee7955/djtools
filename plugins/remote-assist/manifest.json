@@ -1,0 +1,30 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "remote-assist",
+  "publisher": "doujiao-official",
+  "name": "远程协助",
+  "version": "1.0.2",
+  "description": "安全低延迟的双向远程桌面协助，支持9位设备代码互联与严格授权确认",
+  "icon": "🖥️",
+  "engines": {
+    "doujiao": ">=0.4.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "remote.desktop.view"
+    },
+    {
+      "capability": "remote.desktop.control"
+    },
+    {
+      "capability": "remote.file.transfer"
+    },
+    {
+      "capability": "remote.clipboard.sync"
+    }
+  ]
+}

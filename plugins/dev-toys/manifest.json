@@ -1,0 +1,24 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "dev-toys",
+  "publisher": "doujiao-official",
+  "name": "DevToys 极客百宝箱",
+  "version": "1.0.0",
+  "description": "极客与开发者离线瑞士军刀：JSON/YAML 格式化与校验、Base64/URL/JWT 编解码、哈希加解密、时间戳/Cron/正则调试、UUID/高强密码生成、文本 Diff 比对与二维码生成",
+  "icon": "🛠️",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "clipboard.history"
+    },
+    {
+      "capability": "workspace"
+    }
+  ]
+}

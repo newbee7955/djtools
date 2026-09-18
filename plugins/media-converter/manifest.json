@@ -1,0 +1,24 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "media-converter",
+  "publisher": "doujiao-official",
+  "name": "音视频转换",
+  "version": "1.0.0",
+  "description": "基于宿主 FFmpeg 的多媒体处理工坊：支持视频格式转码、音频提取与转换、视频转高质量调色板 GIF、无损片段快剪、视频极限体积压缩与批量转换任务",
+  "icon": "🎬",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "media.convert"
+    },
+    {
+      "capability": "workspace"
+    }
+  ]
+}
