@@ -270,16 +270,34 @@ export class AppUpdateService {
     }
 
     console.log(`[AppUpdateService] 正在拉起安装程序: ${installer}`)
-    // Windows 环境下通过分离进程启动安装器
+
+    // 1. 提前断开远程协助会话并停止辅助后台进程，释放 resources/bin/ 目录下的文件句柄占用
+    try {
+      const { RemoteAssistService } = await import('./remote-assist/remote-assist-service')
+      await RemoteAssistService.getInstance().disconnect('update-restart')
+    } catch (e) {
+      console.warn('[AppUpdateService] 断开远程协助并停止 Helper 异常:', e)
+    }
+
+    // 2. 标记退出状态并主动销毁托盘，防止窗口 close 被拦截最小化到托盘
+    try {
+      const { AppTrayManager } = await import('../tray')
+      AppTrayManager.getInstance().setQuitting(true)
+      AppTrayManager.getInstance().destroy()
+    } catch (e) {
+      console.warn('[AppUpdateService] 清理托盘图标异常:', e)
+    }
+
+    // 3. 通过完全分离子进程启动安装器
     const proc = spawn(installer, [], {
       detached: true,
       stdio: 'ignore'
     })
     proc.unref()
 
-    // 延迟 500ms 后安全退出当前程序
+    // 4. 延迟 500ms 后强制终止宿主进程（app.exit(0) 立即让操作系统释放所有文件锁和动态库）
     setTimeout(() => {
-      app.quit()
+      app.exit(0)
     }, 500)
 
     return true

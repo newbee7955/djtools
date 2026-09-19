@@ -1,10 +1,10 @@
 {
-  "version": "1.0.1",
-  "releaseDate": "2026-09-19",
+  "version": "1.0.2",
+  "releaseDate": "2026-09-20",
   "productName": "豆角工具箱",
-  "changelog": "1. 远程协助全面增强：会话窗口顶部工具栏支持实时动态切换帧率（60 / 30 / 15 FPS），即时生效无需断开\n2. 远程协助插件主界面支持预设默认画面帧率偏好，自动记忆持久化\n3. 彻底修复局域网内远程协助请求广播问题（消除动态模块相对路径解析异常）\n4. 远程协助页面响应式排版自适应优化与窗口自适应布局",
-  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.1/djtools-Setup-1.0.1.exe",
+  "changelog": "1. 彻底修复自动更新重启安装半途闪退 Bug（移除 NSIS 中 taskkill /t 递归进程树误杀，确保安装包顺利完成）\n2. 安装与卸载阶段增加 doujiao-remote-input.exe 辅助进程安全清理\n3. 更新安装退出机制优化，主动注销托盘并强制释放文件锁\n4. 包含 v1.0.1 远程协助 15/30/60 FPS 实时动态切换与局域网协助稳定性优化",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.2/djtools-Setup-1.0.2.exe",
   "fallbackUrls": [],
-  "size": 117080153,
-  "sha256": "ffa6880158c201155fad7f58c6d29f2d2003721a335c623235eb71d6b655bd54"
+  "size": 117080419,
+  "sha256": "9aab4c300c21c147490a88d6bb66372192dbd358d99dc45764efedf46bb74e08"
 }
