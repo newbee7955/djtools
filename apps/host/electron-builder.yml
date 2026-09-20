@@ -16,6 +16,8 @@ extraResources:
     to: registry
   - from: native/remote-input-helper/bin
     to: bin
+  - from: native/dxgi-screen-capturer/bin
+    to: bin
 win:
   icon: build/icon.ico
   executableName: doujiao

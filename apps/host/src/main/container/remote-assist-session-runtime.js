@@ -29,7 +29,7 @@
     let lastPointerSendTime = 0;   // 上次发送时间戳
     let lastEncodeStats = { encodeMs: undefined, codec: '', encoderImplementation: '', qualityLimitationReason: '' };
     let encodeStatsLogged = false;
-    let localCursorEnabled = false;
+    let localCursorEnabled = true;
     let remoteCursorHidden = permission === 'control';
     let statsTimer = null;
     let directFallbackTimer = null;
@@ -102,10 +102,166 @@
       ]);
     }
 
-    // 受控端屏幕捕获：带单次超时与重试，避免 getDisplayMedia 挂起导致握手永久卡住
+    let dxgiWs = null;
+    let isUsingDxgiCapture = false;
+
+    async function tryCaptureDxgiScreen() {
+      if (typeof MediaStreamTrackGenerator === 'undefined' || typeof VideoFrame === 'undefined') {
+        console.warn('[DXGI] 当前环境不支持 MediaStreamTrackGenerator / VideoFrame，回退至浏览器采集');
+        return null;
+      }
+      if (!window.remoteAssistSession || typeof window.remoteAssistSession.getDxgiPort !== 'function') {
+        return null;
+      }
+
+      let port = null;
+      for (let i = 0; i < 15; i++) {
+        port = await window.remoteAssistSession.getDxgiPort().catch(function () { return null; });
+        if (port && port > 0) break;
+        await new Promise(function (r) { setTimeout(r, 100); });
+      }
+
+      if (!port || port <= 0) {
+        console.warn('[DXGI] 未获取到 DXGI 采集器端口，将使用浏览器采集');
+        return null;
+      }
+
+      console.log('[DXGI] 尝试连接原生采集器 ws://127.0.0.1:' + port);
+      const ws = await new Promise(function (resolve) {
+        let done = false;
+        try {
+          const s = new WebSocket('ws://127.0.0.1:' + port);
+          s.binaryType = 'arraybuffer';
+          const timer = setTimeout(function () {
+            if (!done) {
+              done = true;
+              try { s.close(); } catch (e) {}
+              resolve(null);
+            }
+          }, 2000);
+          s.onopen = function () {
+            if (!done) {
+              done = true;
+              clearTimeout(timer);
+              resolve(s);
+            }
+          };
+          s.onerror = function (err) {
+            if (!done) {
+              done = true;
+              clearTimeout(timer);
+              console.warn('[DXGI] WebSocket 连接错误:', err);
+              resolve(null);
+            }
+          };
+        } catch (err) {
+          resolve(null);
+        }
+      });
+
+      if (!ws) {
+        console.warn('[DXGI] 原生采集器连接失败，回退至浏览器采集');
+        return null;
+      }
+
+      dxgiWs = ws;
+      const generator = new MediaStreamTrackGenerator({ kind: 'video' });
+      const writer = generator.writable.getWriter();
+      let firstFrameReceived = false;
+
+      ws.onmessage = function (event) {
+        if (typeof event.data === 'string') {
+          try {
+            const data = JSON.parse(event.data);
+            if (data && data.type === 'cursor') {
+              if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({
+                  kind: 'control',
+                  action: 'cursor-sync',
+                  visible: data.visible,
+                  x: data.x,
+                  y: data.y,
+                  hotspotX: data.hotspotX,
+                  hotspotY: data.hotspotY,
+                  shape: data.shape
+                }));
+              }
+            }
+          } catch (e) {}
+          return;
+        }
+
+        if (event.data instanceof ArrayBuffer) {
+          const ab = event.data;
+          if (ab.byteLength < 24) return;
+          const view = new DataView(ab);
+          const magic = view.getUint32(0, true);
+          if (magic !== 0x44584749) return;
+
+          const width = view.getUint32(4, true);
+          const height = view.getUint32(8, true);
+          const timestampUs = Number(view.getBigUint64(16, true));
+          const pixelBytes = new Uint8Array(ab, 24);
+
+          try {
+            const frame = new VideoFrame(pixelBytes, {
+              format: 'BGRA',
+              codedWidth: width,
+              codedHeight: height,
+              timestamp: timestampUs
+            });
+            writer.write(frame).catch(function () {});
+            frame.close();
+            if (!firstFrameReceived) {
+              firstFrameReceived = true;
+              console.log('[DXGI] 首帧纯净桌面渲染成功:', width, 'x', height);
+            }
+          } catch (e) {
+            console.warn('[DXGI] VideoFrame 构建异常:', e);
+          }
+        }
+      };
+
+      ws.onclose = function () {
+        console.warn('[DXGI] 采集器 WebSocket 连接已断开');
+        try { writer.close(); } catch (e) {}
+      };
+
+      const stream = new MediaStream([generator]);
+      isUsingDxgiCapture = true;
+      return stream;
+    }
+
+    // 受控端屏幕捕获：优先尝试原生 DXGI 采集，失败自动回退至浏览器 getDisplayMedia
     async function captureScreen() {
-      // 将目标画质的分辨率直接带入首次 getDisplayMedia，避免捕获后 applyConstraints 重启采集器（1-2s 黑屏）
       const targetProfile = QUALITY_PROFILES[controllerDesiredQuality] || QUALITY_PROFILES['1080p'];
+
+      // 1) 优先使用 C++ 原生 DXGI 模块采集纯净画面（天然无光标合成，根除重影）
+      try {
+        const dxgiStream = await tryCaptureDxgiScreen();
+        if (dxgiStream) {
+          const videoTrack = dxgiStream.getVideoTracks()[0];
+          if (videoTrack) {
+            if ('contentHint' in videoTrack) {
+              videoTrack.contentHint = 'motion';
+            }
+            pc.addTrack(videoTrack, dxgiStream);
+            localVideoTrack = videoTrack;
+            localVideoSender = pc.getSenders().find((s) => s.track === videoTrack) || null;
+            if (localVideoSender) {
+              await applyLowLatencyEncoding(localVideoSender, targetProfile);
+            }
+            preferHardwareH264();
+          }
+          console.log('[WebRTC] 原生 DXGI 屏幕捕获成功, 轨道数:', dxgiStream.getTracks().length);
+          appliedQuality = controllerDesiredQuality;
+          return dxgiStream;
+        }
+      } catch (err) {
+        console.warn('[WebRTC] 原生 DXGI 初始化异常，将使用浏览器采集:', err);
+      }
+
+      // 2) 回退至浏览器 getDisplayMedia 采集
       for (let attempt = 1; attempt <= CAPTURE_MAX_ATTEMPTS; attempt++) {
         try {
           const stream = await withTimeout(
@@ -1230,6 +1386,21 @@
             if (data && data.kind === 'control' && data.action === 'set-remote-cursor') {
               return;
             }
+            if (data && data.kind === 'control' && data.action === 'cursor-sync') {
+              const video = document.getElementById('remoteVideo');
+              if (video && localCursorEnabled) {
+                if (data.visible === false) {
+                  video.style.cursor = 'none';
+                } else if (data.shape) {
+                  const hx = typeof data.hotspotX === 'number' ? data.hotspotX : 0;
+                  const hy = typeof data.hotspotY === 'number' ? data.hotspotY : 0;
+                  video.style.cursor = 'url("' + data.shape + '") ' + hx + ' ' + hy + ', auto';
+                } else {
+                  video.style.cursor = 'default';
+                }
+              }
+              return;
+            }
             if (data && data.kind === 'control' && data.action === 'media-stats') {
               if (typeof data.encodeMs === 'number') lastEncodeStats.encodeMs = data.encodeMs;
               if (data.codec) lastEncodeStats.codec = data.codec;
@@ -1330,6 +1501,9 @@
               }
               if (data && data.kind === 'control' && data.action === 'set-remote-cursor') {
                 applyRemoteCursorHidden(data.hidden);
+                return;
+              }
+              if (data && data.kind === 'control' && data.action === 'cursor-sync') {
                 return;
               }
               // 画质回执/帧率回执/编码统计是本端发给控制端的确认消息，受控端必须忽略，切勿当作输入事件转发
@@ -1579,20 +1753,21 @@
 
       if (permission !== 'control' || !video) return;
 
-      // 控制端默认隐藏本地光标，仅显示远端画面内的真实光标，彻底消除双光标/重影现象
+      // 控制端默认启用 0ms 即时本地光标，配合 DXGI 纯净流与远端光标形状同步，彻底消除双光标重影
       const cursorBtn = document.getElementById('cursorModeBtn');
-      video.style.cursor = 'none';
+      video.style.cursor = 'default';
+      localCursorEnabled = true;
       if (cursorBtn) {
-        cursorBtn.textContent = '光标: 仅远端';
-        cursorBtn.style.background = '#334155';
+        cursorBtn.textContent = '光标: DXGI原生(0ms)';
+        cursorBtn.style.background = '#0284c7';
         cursorBtn.addEventListener('click', () => {
           localCursorEnabled = !localCursorEnabled;
           video.style.cursor = localCursorEnabled ? 'default' : 'none';
-          cursorBtn.textContent = localCursorEnabled ? '光标: 本地+远端' : '光标: 仅远端';
+          cursorBtn.textContent = localCursorEnabled ? '光标: DXGI原生(0ms)' : '光标: 隐藏';
           cursorBtn.style.background = localCursorEnabled ? '#0284c7' : '#334155';
           cursorBtn.title = localCursorEnabled
-            ? '当前为本地+远端双光标(适合高延迟网络)，点击切换为仅远端光标'
-            : '当前为仅远端光标(无重影)，点击开启本地即时光标';
+            ? '当前为 0ms 本地原生光标(动态形状同步)，点击隐藏'
+            : '当前已隐藏光标，点击开启 0ms 本地原生光标';
         });
       }
 

@@ -84,6 +84,10 @@ const sessionApi = {
     ipcRenderer.send('remote-assist:session:set-preferred-fps', fps)
   },
 
+  getDxgiPort: (): Promise<number | null> => {
+    return ipcRenderer.invoke('remote-assist:session:get-dxgi-port')
+  },
+
   transfer: {
     // 主进程 -> 渲染进程：把要发送到对端的帧交给 DataChannel
     onOutgoingChunk: (cb: (bytes: Uint8Array) => void) => {

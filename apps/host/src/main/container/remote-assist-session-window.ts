@@ -12,6 +12,7 @@ import type { RemoteAssistService } from '../services/remote-assist/remote-assis
 import { DisplayMediaController } from '../services/remote-assist/display-media-controller.ts'
 import { TransferService } from '../services/remote-assist/transfer/transfer-service.ts'
 import type { TransferSession, FrameTransport } from '../services/remote-assist/transfer/transfer-session.ts'
+import { DxgiCapturerHelper } from '../services/remote-assist/dxgi-capturer-helper.ts'
 import sessionRuntime from './remote-assist-session-runtime.js?raw'
 
 /**
@@ -83,11 +84,20 @@ export class RemoteAssistSessionWindow {
   private transferSession: TransferSession | null = null
   private transferAttachedSessionId: string | null = null
   private unsubTransfer: (() => void) | null = null
+  private dxgiCapturer: DxgiCapturerHelper | null = null
 
   constructor(options: SessionWindowOptions) {
     this.options = options
     if (!RemoteAssistSessionWindow.displayMediaController) {
       RemoteAssistSessionWindow.displayMediaController = new DisplayMediaController('persist:remote-assist')
+    }
+    if (this.options.role !== 'controller') {
+      this.dxgiCapturer = new DxgiCapturerHelper()
+      void this.dxgiCapturer.start({ fps: 60 }).then((port) => {
+        if (port && this.window && !this.window.isDestroyed()) {
+          this.window.webContents.send('remote-assist:session:dxgi-ready', port)
+        }
+      })
     }
     this.createWindow()
     this.setupIpc()
@@ -530,6 +540,14 @@ export class RemoteAssistSessionWindow {
       RemoteAssistSessionWindow.getInfoRegistered = true
       this.registeredGetInfo = true
     }
+
+    try {
+      ipcMain.removeHandler('remote-assist:session:get-dxgi-port')
+    } catch {}
+    ipcMain.handle('remote-assist:session:get-dxgi-port', (event) => {
+      if (!this.isFromThisWindow(event)) return null
+      return this.dxgiCapturer ? this.dxgiCapturer.getPort() : null
+    })
   }
 
   /**
@@ -615,6 +633,14 @@ export class RemoteAssistSessionWindow {
       RemoteAssistSessionWindow.getInfoRegistered = false
       this.registeredGetInfo = false
     }
+
+    if (this.dxgiCapturer) {
+      void this.dxgiCapturer.stop()
+      this.dxgiCapturer = null
+    }
+    try {
+      ipcMain.removeHandler('remote-assist:session:get-dxgi-port')
+    } catch {}
 
     if (this.window && !this.window.isDestroyed()) {
       this.window.destroy()
