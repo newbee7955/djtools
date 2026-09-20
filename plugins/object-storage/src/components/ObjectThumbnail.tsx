@@ -35,6 +35,9 @@ export function ObjectThumbnail({
   const [mediaUrl, setMediaUrl] = useState<string>('')
   const [loaded, setLoaded] = useState<boolean>(false)
   const [error, setError] = useState<boolean>(false)
+  const [isInView, setIsInView] = useState<boolean>(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
   const isMountedRef = useRef(true)
 
   const ext = item.extension.toLowerCase()
@@ -48,29 +51,75 @@ export function ObjectThumbnail({
   ].includes(ext)
   const isArchive = ['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)
 
+  // 1. 基于 IntersectionObserver 的视口可见性懒加载监听
+  useEffect(() => {
+    setIsInView(false)
+    if (item.isDirectory || (!isImage && !isVideo)) {
+      return
+    }
+
+    const el = containerRef.current
+    if (!el) return
+
+    // 降级：若运行环境无 IntersectionObserver 则直接加载
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsInView(true)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsInView(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '150px' }
+    )
+
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+    }
+  }, [item.key, bucket, item.isDirectory, isImage, isVideo])
+
+  // 2. 只有滚动进入视口后才触发预签名 URL 计算与加载；退出或卸载时立即中断
   useEffect(() => {
     isMountedRef.current = true
     setLoaded(false)
     setError(false)
 
-    if ((isImage || isVideo) && client && bucket && !item.isDirectory) {
-      getCachedPresignedUrl(client, bucket, item.key)
-        .then((url) => {
-          if (isMountedRef.current) {
-            setMediaUrl(url)
-          }
-        })
-        .catch(() => {
-          if (isMountedRef.current) {
-            setError(true)
-          }
-        })
+    if (!isInView || !(isImage || isVideo) || !client || !bucket || item.isDirectory) {
+      return
     }
 
+    let canceled = false
+
+    getCachedPresignedUrl(client, bucket, item.key)
+      .then((url) => {
+        if (!canceled && isMountedRef.current) {
+          setMediaUrl(url)
+        }
+      })
+      .catch(() => {
+        if (!canceled && isMountedRef.current) {
+          setError(true)
+        }
+      })
+
     return () => {
+      canceled = true
       isMountedRef.current = false
+      // 当目录切换、退出或卡片销毁时，立即暂停并切断视频网络流，防止在后台持续消耗带宽
+      if (videoRef.current) {
+        try {
+          videoRef.current.pause()
+          videoRef.current.removeAttribute('src')
+          videoRef.current.load()
+        } catch {}
+      }
     }
-  }, [item.key, bucket, client, isImage, isVideo, item.isDirectory])
+  }, [isInView, item.key, bucket, client, isImage, isVideo, item.isDirectory])
 
   // ==========================================
   // 1. 列表视图 (List View - 36x36 紧凑微缩图)
@@ -86,7 +135,7 @@ export function ObjectThumbnail({
 
     if (isImage) {
       return (
-        <div className="w-9 h-9 rounded-lg bg-slate-900 border border-slate-800/80 overflow-hidden flex items-center justify-center shrink-0 relative select-none">
+        <div ref={containerRef} className="w-9 h-9 rounded-lg bg-slate-900 border border-slate-800/80 overflow-hidden flex items-center justify-center shrink-0 relative select-none">
           {mediaUrl && !error ? (
             <img
               src={mediaUrl}
@@ -110,10 +159,11 @@ export function ObjectThumbnail({
 
     if (isVideo) {
       return (
-        <div className="w-9 h-9 rounded-lg bg-slate-950 border border-rose-500/20 overflow-hidden flex items-center justify-center shrink-0 relative select-none group/vid">
+        <div ref={containerRef} className="w-9 h-9 rounded-lg bg-slate-950 border border-rose-500/20 overflow-hidden flex items-center justify-center shrink-0 relative select-none group/vid">
           {mediaUrl && !error ? (
             <>
               <video
+                ref={videoRef}
                 src={`${mediaUrl}#t=0.1`}
                 preload="metadata"
                 muted
@@ -195,7 +245,7 @@ export function ObjectThumbnail({
   // 图片缩略图
   if (isImage) {
     return (
-      <div className="w-full h-28 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden relative flex items-center justify-center group/card">
+      <div ref={containerRef} className="w-full h-28 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden relative flex items-center justify-center group/card">
         {mediaUrl && !error ? (
           <>
             <img
@@ -233,10 +283,11 @@ export function ObjectThumbnail({
   // 视频缩略图与视频元数据首帧
   if (isVideo) {
     return (
-      <div className="w-full h-28 rounded-xl bg-slate-950 border border-rose-500/20 overflow-hidden relative flex items-center justify-center group/vid">
+      <div ref={containerRef} className="w-full h-28 rounded-xl bg-slate-950 border border-rose-500/20 overflow-hidden relative flex items-center justify-center group/vid">
         {mediaUrl && !error ? (
           <>
             <video
+              ref={videoRef}
               src={`${mediaUrl}#t=0.1`}
               preload="metadata"
               muted

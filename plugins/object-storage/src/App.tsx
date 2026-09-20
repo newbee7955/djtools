@@ -641,7 +641,7 @@ export default function App(): JSX.Element {
 
               return (
                 <div
-                  key={item.key}
+                  key={`${currentBucket}:${item.key}`}
                   onClick={() => {
                     if (item.isDirectory) {
                       navigateToPrefix(item.key)
@@ -789,7 +789,7 @@ export default function App(): JSX.Element {
 
                 return (
                   <div
-                    key={item.key}
+                    key={`${currentBucket}:${item.key}`}
                     onClick={() => {
                       if (item.isDirectory) {
                         navigateToPrefix(item.key)

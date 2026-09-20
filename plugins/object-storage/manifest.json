@@ -3,8 +3,8 @@
   "id": "object-storage",
   "publisher": "doujiao-official",
   "name": "对象存储管理",
-  "version": "1.0.3",
-  "changelog": "【v1.0.3】支持与宿主全局配置同步、导入导出实时联动；修复对端关闭连接 (net::ERR_CONNECTION_CLOSED) 网络异常自动直连重试与 HTTP/HTTPS 智能识别",
+  "version": "1.0.4",
+  "changelog": "【v1.0.4】缩略图优化：实现视口可见性懒加载（IntersectionObserver），仅对进入可视区域的文件计算预签名 URL；离开目录或卸载时主动切断网络视频流。",
   "description": "支持 S3 / MinIO / 阿里云 OSS / 腾讯云 COS / Cloudflare R2 等对象存储，支持目录树浏览、文件拖拽上传、预签名分享与多媒体在线预览",
   "icon": "🪣",
   "engines": {

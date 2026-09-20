@@ -1723,9 +1723,32 @@
         transferApi.onState((state) => {
           const status = document.getElementById('transferStatus');
           if (status) {
-            // 新的传输状态到达时清除上一次的错误红色
             status.style.color = '';
-            status.textContent = (state.direction === 'outgoing' ? '发送' : '接收') + ' ' + state.transferredBytes + '/' + state.totalBytes + ' · ' + state.status;
+            if (state.status === 'done') {
+              if (state.direction === 'outgoing') {
+                status.textContent = '已成功发送到对方电脑 (对方保存在「下载/豆角远程传输」)';
+                status.style.color = '#4ade80';
+              } else {
+                status.textContent = '已接收文件 (保存在本机的「下载/豆角远程传输」)';
+                status.style.color = '#4ade80';
+              }
+            } else if (state.status === 'active' || state.status === 'pending') {
+              const total = state.totalBytes || 0;
+              const transferred = state.transferredBytes || 0;
+              const pct = total > 0 ? Math.round((transferred / total) * 100) : 0;
+              status.textContent = (state.direction === 'outgoing' ? '正在发送: ' : '正在接收: ') + pct + '% (' + transferred + '/' + total + ')';
+            } else if (state.status === 'failed') {
+              status.textContent = '传输失败: ' + (state.message || '未知错误');
+              status.style.color = '#f87171';
+            } else if (state.status === 'rejected') {
+              status.textContent = '对方拒绝了文件传输: ' + (state.message || '');
+              status.style.color = '#f87171';
+            } else if (state.status === 'cancelled') {
+              status.textContent = '文件传输已取消';
+              status.style.color = '#94a3b8';
+            } else {
+              status.textContent = (state.direction === 'outgoing' ? '发送 ' : '接收 ') + state.status;
+            }
           }
         });
         // 主进程发送失败（如无可用传输通道）时，把错误显示到状态栏

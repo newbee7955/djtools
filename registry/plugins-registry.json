@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "registryVersion": 107,
-  "updatedAt": "2026-09-19T15:36:35.949Z",
+  "registryVersion": 109,
+  "updatedAt": "2026-09-20T08:09:09.451Z",
   "plugins": [
     {
       "id": "douyin-downloader",
@@ -883,6 +883,34 @@
       "icon": "🗄️",
       "releases": [
         {
+          "version": "1.0.2",
+          "channel": "stable",
+          "publishedAt": "2026-09-20T08:09:06.603Z",
+          "changelog": "【v1.0.2】缩略图优化：实现视口可见性懒加载（IntersectionObserver），避免一次性加载全目录缩略图；退出或切换目录时立即清空任务队列并切断后台视频流。",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "samba.client"
+            },
+            {
+              "capability": "media.merge"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/samba-manager-v1.0.2.zip",
+              "size": 63019,
+              "sha256": "c61f186a6a885ea21758a071342a1b7157fb01245e1c628feb5a66003a7c58c2",
+              "signature": "931nQ7rgWqRrXtzyWin02v44AZujiPfKAn/5I3tX3Z9J/4pBVmWr2UBWzyiSqoaHK4jgRoyDCgNTLSpRGDXjBg=="
+            }
+          ]
+        },
+        {
           "version": "1.0.1",
           "channel": "stable",
           "publishedAt": "2026-09-10T02:00:36.124Z",
@@ -1006,6 +1034,47 @@
       "description": "支持 S3 / MinIO / 阿里云 OSS / 腾讯云 COS / Cloudflare R2 等对象存储，支持目录树浏览、文件拖拽上传、预签名分享与多媒体在线预览",
       "icon": "🪣",
       "releases": [
+        {
+          "version": "1.0.4",
+          "channel": "stable",
+          "publishedAt": "2026-09-20T08:09:09.451Z",
+          "changelog": "【v1.0.4】缩略图优化：实现视口可见性懒加载（IntersectionObserver），仅对进入可视区域的文件计算预签名 URL；离开目录或卸载时主动切断网络视频流。",
+          "engines": {
+            "doujiao": ">=0.2.0 <0.3.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "*"
+              ],
+              "methods": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "HEAD"
+              ]
+            },
+            {
+              "capability": "download.enqueue",
+              "formats": [
+                "*"
+              ]
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/object-storage-v1.0.4.zip",
+              "size": 73392,
+              "sha256": "398470f9417d9f741f92a6b6e12ca173eeb27f14c08311c43cb2bc66df2a89bf",
+              "signature": "VOnMTQna3J6fOJGFQ6/dOknIbz9KR5dgHnrU8qe2N8DfI7pz6EYjLyiRxSWcSJP5UPK6r05JOQPurLUPRxkpAA=="
+            }
+          ]
+        },
         {
           "version": "1.0.3",
           "channel": "stable",

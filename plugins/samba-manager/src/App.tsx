@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import type {
   SambaProfile,
   SambaConfig,
@@ -53,6 +53,115 @@ function getFileIcon(item: SambaFileItem): { icon: string; color: string } {
   return { icon: '📃', color: 'text-slate-400' }
 }
 
+interface SambaItemThumbnailProps {
+  item: SambaFileItem
+  profileId: string
+  dirToken: number
+  thumbnailUrl?: string
+  viewMode: 'grid' | 'list'
+  onRequestThumbnail: (profileId: string, item: SambaFileItem) => void
+}
+
+// 基于 IntersectionObserver 的视口按需加载缩略图组件
+const SambaItemThumbnail: React.FC<SambaItemThumbnailProps> = ({
+  item,
+  profileId,
+  dirToken,
+  thumbnailUrl,
+  viewMode,
+  onRequestThumbnail
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const isRequestedRef = useRef(false)
+  const ext = item.extension.toLowerCase()
+  const isVideo = ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'wmv', 'm4v', '3gp'].includes(ext)
+  const isImage = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'svg'].includes(ext)
+  const needsThumbnail = !item.isDirectory && (isImage || isVideo)
+
+  useEffect(() => {
+    isRequestedRef.current = false
+    if (!needsThumbnail || thumbnailUrl) return
+
+    const el = containerRef.current
+    if (!el) return
+
+    if (typeof IntersectionObserver === 'undefined') {
+      onRequestThumbnail(profileId, item)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          if (!isRequestedRef.current) {
+            isRequestedRef.current = true
+            onRequestThumbnail(profileId, item)
+          }
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '150px' }
+    )
+
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+    }
+  }, [item.path, profileId, dirToken, needsThumbnail, thumbnailUrl, onRequestThumbnail])
+
+  const { icon, color } = getFileIcon(item)
+
+  if (viewMode === 'list') {
+    return (
+      <div
+        ref={containerRef}
+        className="w-7 h-7 rounded bg-slate-950 flex items-center justify-center overflow-hidden flex-shrink-0"
+      >
+        {thumbnailUrl ? (
+          <img src={thumbnailUrl} alt={item.name} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-base select-none">{icon}</span>
+        )}
+      </div>
+    )
+  }
+
+  // 网格大卡片视图
+  return (
+    <div
+      ref={containerRef}
+      className="w-full aspect-[4/3] rounded-lg bg-slate-950 flex items-center justify-center overflow-hidden relative mb-2.5"
+    >
+      {thumbnailUrl ? (
+        <div className="w-full h-full relative">
+          <img
+            src={thumbnailUrl}
+            alt={item.name}
+            className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+          />
+          {isVideo && (
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+              <span className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white text-xs shadow-lg">
+                ▶
+              </span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <span className={`text-4xl ${color} select-none`}>{icon}</span>
+      )}
+
+      {/* 格式微徽标 */}
+      {!item.isDirectory && item.extension && (
+        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-900/80 backdrop-blur-sm text-slate-300 uppercase">
+          {item.extension}
+        </span>
+      )}
+    </div>
+  )
+}
+
 export default function App(): JSX.Element {
   const sdk = window.doujiaoSDK?.samba
 
@@ -105,8 +214,17 @@ export default function App(): JSX.Element {
     error?: string
   } | null>(null)
 
+  // 当前活动目录标识 Token，切换目录或退出时自增，用于快速作废旧目录的过期缩略图任务
+  const activeDirTokenRef = useRef<number>(0)
+  // 追踪浏览器正在抽帧的 HTMLVideoElement，切换目录时可快速 pause 并清除 src，切断网络流
+  const activeExtractVideosRef = useRef<Set<HTMLVideoElement>>(new Set())
+
+  // 缩略图按需请求队列 (最大并发 4，避免瞬间打满 IPC / Samba 读取)
+  const thumbQueueRef = useRef<Array<{ profileId: string; item: SambaFileItem; token: number }>>([])
+  const activeThumbJobsRef = useRef<number>(0)
+
   // 视频前端抽帧队列 (并发度 2，避免浏览器内存过载)
-  const videoThumbQueueRef = useRef<Array<{ profileId: string; item: SambaFileItem }>>([])
+  const videoThumbQueueRef = useRef<Array<{ profileId: string; item: SambaFileItem; token: number }>>([])
   const activeThumbWorkersRef = useRef<number>(0)
 
   // 表单状态
@@ -189,18 +307,37 @@ export default function App(): JSX.Element {
   // 读取目录
   const loadDirectory = async (profileId: string, path: string) => {
     if (!sdk || !profileId) return
+    const currentToken = ++activeDirTokenRef.current
+
+    // 立即中断旧目录所有缩略图任务与正在缓冲的视频流
+    thumbQueueRef.current = []
+    videoThumbQueueRef.current = []
+    loadingThumbsRef.current.clear()
+    for (const vid of activeExtractVideosRef.current) {
+      try {
+        vid.pause()
+        vid.removeAttribute('src')
+        vid.load()
+        vid.remove()
+      } catch {}
+    }
+    activeExtractVideosRef.current.clear()
+
     setLoadingFiles(true)
     try {
       const items = await sdk.listDirectory(profileId, path)
+      if (currentToken !== activeDirTokenRef.current) return
       setFileList(items)
       setCurrentPath(path)
-      // 触发首批图片和视频缩略图加载
-      triggerThumbnailLoads(profileId, items)
+      // 不再全量调用 triggerThumbnailLoads，改为由视口可见性按需触发
     } catch (err: any) {
+      if (currentToken !== activeDirTokenRef.current) return
       console.error('加载目录失败:', err)
       alert(`读取目录失败: ${err.message}`)
     } finally {
-      setLoadingFiles(false)
+      if (currentToken === activeDirTokenRef.current) {
+        setLoadingFiles(false)
+      }
     }
   }
 
@@ -224,10 +361,16 @@ export default function App(): JSX.Element {
   }, [previewVideo, previewImage, previewText])
 
   // 前端免 FFmpeg 视频硬件解码抽帧逻辑
-  const extractVideoThumbnailInBrowser = async (profileId: string, item: SambaFileItem): Promise<string | null> => {
-    if (!sdk) return null
+  const extractVideoThumbnailInBrowser = async (
+    profileId: string,
+    item: SambaFileItem,
+    token: number
+  ): Promise<string | null> => {
+    if (!sdk || token !== activeDirTokenRef.current) return null
     try {
       const streamUrl = await sdk.getFileStreamUrl(profileId, item.path)
+      if (token !== activeDirTokenRef.current) return null
+
       return new Promise<string | null>((resolve) => {
         const video = document.createElement('video')
         video.crossOrigin = 'anonymous'
@@ -235,8 +378,11 @@ export default function App(): JSX.Element {
         video.muted = true
         video.playsInline = true
 
+        activeExtractVideosRef.current.add(video)
+
         let finished = false
         const cleanup = () => {
+          activeExtractVideosRef.current.delete(video)
           if (finished) return
           finished = true
           video.pause()
@@ -251,12 +397,22 @@ export default function App(): JSX.Element {
         }, 8000)
 
         video.addEventListener('loadedmetadata', () => {
+          if (token !== activeDirTokenRef.current) {
+            cleanup()
+            resolve(null)
+            return
+          }
           // 截取第 1 秒或前中段关键帧
           const targetTime = Math.min(1, (video.duration || 1) / 2)
           video.currentTime = targetTime
         })
 
         video.addEventListener('seeked', () => {
+          if (token !== activeDirTokenRef.current) {
+            cleanup()
+            resolve(null)
+            return
+          }
           try {
             const canvas = document.createElement('canvas')
             const targetWidth = 240
@@ -301,9 +457,15 @@ export default function App(): JSX.Element {
     const task = videoThumbQueueRef.current.shift()
     if (!task) return
 
+    if (task.token !== activeDirTokenRef.current) {
+      processVideoThumbQueue()
+      return
+    }
+
     activeThumbWorkersRef.current++
-    extractVideoThumbnailInBrowser(task.profileId, task.item)
+    extractVideoThumbnailInBrowser(task.profileId, task.item, task.token)
       .then((dataUrl) => {
+        if (task.token !== activeDirTokenRef.current) return
         if (dataUrl) {
           setThumbnails((prev) => ({ ...prev, [task.item.path]: dataUrl }))
           sdk?.saveThumbnailCache(task.profileId, task.item.path, task.item.size, dataUrl).catch(() => {})
@@ -316,49 +478,70 @@ export default function App(): JSX.Element {
       })
   }
 
-  const enqueueFrontendVideoThumbnail = (profileId: string, item: SambaFileItem) => {
+  const enqueueFrontendVideoThumbnail = (profileId: string, item: SambaFileItem, token: number) => {
+    if (token !== activeDirTokenRef.current) return
     if (thumbnails[item.path]) return
     if (videoThumbQueueRef.current.some((t) => t.item.path === item.path)) return
-    videoThumbQueueRef.current.push({ profileId, item })
+    videoThumbQueueRef.current.push({ profileId, item, token })
     processVideoThumbQueue()
   }
 
-  // 异步加载图片与视频缩略图
-  const triggerThumbnailLoads = (profileId: string, items: SambaFileItem[]) => {
-    if (!sdk) return
-    items.forEach((item) => {
-      if (item.isDirectory) return
-      const ext = item.extension.toLowerCase()
-      const isImg = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'].includes(ext)
-      const isVid = ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'wmv', 'm4v', '3gp'].includes(ext)
-      if (!isImg && !isVid) return
+  const processThumbQueue = () => {
+    if (activeThumbJobsRef.current >= 4) return
+    const task = thumbQueueRef.current.shift()
+    if (!task) return
 
-      const cacheKey = item.path
-      if (thumbnails[cacheKey] || loadingThumbsRef.current.has(cacheKey)) return
+    if (task.token !== activeDirTokenRef.current) {
+      processThumbQueue()
+      return
+    }
 
-      loadingThumbsRef.current.add(cacheKey)
-      const mime = isImg ? `image/${ext === 'jpg' ? 'jpeg' : ext}` : `video/${ext}`
+    activeThumbJobsRef.current++
+    const { profileId, item, token } = task
+    const ext = item.extension.toLowerCase()
+    const isImg = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'svg'].includes(ext)
+    const mime = isImg ? `image/${ext === 'jpg' ? 'jpeg' : ext}` : `video/${ext}`
+    const cacheKey = item.path
 
-      sdk
-        .getThumbnail(profileId, item.path, mime, item.size)
-        .then((dataUrl) => {
-          if (dataUrl) {
-            setThumbnails((prev) => ({ ...prev, [cacheKey]: dataUrl }))
-          } else if (isVid) {
-            // 宿主未安装 FFmpeg，由前端通过本地 HTTP Range 流式服务 + Canvas 解码抽取缩略图并写回缓存
-            enqueueFrontendVideoThumbnail(profileId, item)
-          }
-        })
-        .catch(() => {
-          if (isVid) {
-            enqueueFrontendVideoThumbnail(profileId, item)
-          }
-        })
-        .finally(() => {
-          loadingThumbsRef.current.delete(cacheKey)
-        })
-    })
+    sdk
+      ?.getThumbnail(profileId, item.path, mime, item.size)
+      .then((dataUrl) => {
+        if (token !== activeDirTokenRef.current) return
+        if (dataUrl) {
+          setThumbnails((prev) => ({ ...prev, [cacheKey]: dataUrl }))
+        } else if (!isImg) {
+          // 宿主未安装 FFmpeg，转入前端抽帧队列
+          enqueueFrontendVideoThumbnail(profileId, item, token)
+        }
+      })
+      .catch(() => {
+        if (token !== activeDirTokenRef.current) return
+        if (!isImg) {
+          enqueueFrontendVideoThumbnail(profileId, item, token)
+        }
+      })
+      .finally(() => {
+        activeThumbJobsRef.current--
+        loadingThumbsRef.current.delete(cacheKey)
+        processThumbQueue()
+      })
   }
+
+  // 视口触发的单个文件缩略图按需请求
+  const requestThumbnail = useCallback((profileId: string, item: SambaFileItem) => {
+    if (!sdk || !profileId || item.isDirectory) return
+    const ext = item.extension.toLowerCase()
+    const isImg = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'svg'].includes(ext)
+    const isVid = ['mp4', 'mkv', 'mov', 'avi', 'webm', 'flv', 'wmv', 'm4v', '3gp'].includes(ext)
+    if (!isImg && !isVid) return
+
+    const cacheKey = item.path
+    if (thumbnails[cacheKey] || loadingThumbsRef.current.has(cacheKey)) return
+
+    loadingThumbsRef.current.add(cacheKey)
+    thumbQueueRef.current.push({ profileId, item, token: activeDirTokenRef.current })
+    processThumbQueue()
+  }, [sdk, thumbnails])
 
   // 面包屑导航
   const breadcrumbs = useMemo(() => {
@@ -912,10 +1095,7 @@ export default function App(): JSX.Element {
             /* 网格卡片视图 (带大图/视频智能缩略图) */
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {filteredFiles.map((item) => {
-                const { icon, color } = getFileIcon(item)
                 const thumb = thumbnails[item.path]
-                const isVideo = ['mp4', 'mkv', 'mov', 'webm'].includes(item.extension.toLowerCase())
-                const isImage = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'svg'].includes(item.extension.toLowerCase())
 
                 return (
                   <div
@@ -923,35 +1103,15 @@ export default function App(): JSX.Element {
                     onClick={() => handleItemClick(item)}
                     className="group relative bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 hover:border-emerald-500/50 rounded-xl p-3 cursor-pointer transition-all flex flex-col justify-between shadow-sm hover:shadow-md"
                   >
-                    {/* 缩略图 / 图标容器 */}
-                    <div className="w-full aspect-[4/3] rounded-lg bg-slate-950 flex items-center justify-center overflow-hidden relative mb-2.5">
-                      {thumb ? (
-                        <div className="w-full h-full relative">
-                          <img
-                            src={thumb}
-                            alt={item.name}
-                            className="w-full h-full object-cover rounded-lg group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                          {isVideo && (
-                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                              <span className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white text-xs shadow-lg">
-                                ▶
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className={`text-4xl ${color} select-none`}>{icon}</span>
-                      )}
-
-                      {/* 格式微徽标 */}
-                      {!item.isDirectory && item.extension && (
-                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-900/80 backdrop-blur-sm text-slate-300 uppercase">
-                          {item.extension}
-                        </span>
-                      )}
-                    </div>
+                    {/* 缩略图 / 图标容器（视口按需懒加载） */}
+                    <SambaItemThumbnail
+                      item={item}
+                      profileId={activeProfileId}
+                      dirToken={activeDirTokenRef.current}
+                      thumbnailUrl={thumb}
+                      viewMode="grid"
+                      onRequestThumbnail={requestThumbnail}
+                    />
 
                     {/* 文件名与信息 */}
                     <div className="min-w-0">
@@ -1021,7 +1181,6 @@ export default function App(): JSX.Element {
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {filteredFiles.map((item) => {
-                    const { icon } = getFileIcon(item)
                     const thumb = thumbnails[item.path]
                     return (
                       <tr
@@ -1030,13 +1189,14 @@ export default function App(): JSX.Element {
                         className="hover:bg-slate-800/50 cursor-pointer transition-colors group"
                       >
                         <td className="py-2.5 px-4 flex items-center gap-3">
-                          <div className="w-7 h-7 rounded bg-slate-950 flex items-center justify-center overflow-hidden flex-shrink-0">
-                            {thumb ? (
-                              <img src={thumb} alt={item.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-base">{icon}</span>
-                            )}
-                          </div>
+                          <SambaItemThumbnail
+                            item={item}
+                            profileId={activeProfileId}
+                            dirToken={activeDirTokenRef.current}
+                            thumbnailUrl={thumb}
+                            viewMode="list"
+                            onRequestThumbnail={requestThumbnail}
+                          />
                           <span className="font-medium text-white truncate max-w-md">{item.name}</span>
                         </td>
                         <td className="py-2.5 px-4 font-mono text-slate-400">
