@@ -1,10 +1,10 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "releaseDate": "2026-09-20",
   "productName": "豆角工具箱",
-  "changelog": "1. 修复远程协助被控端在会话结束或异常退出时光标消失的问题（移除全局隐藏光标，增加强制恢复光标）\n2. 修复 Markdown 编辑器「即时渲染」与「纯预览」在窗口最大化或宽屏下未铺满全屏的问题（移除 860px/768px 固定限制，全面自适应全屏）\n3. 优化抖音下载等插件在宽屏下的响应式布局，解除固定宽度约束\n4. 增强宿主窗口缩放、最大化、还原、全屏等全部生命周期事件对插件沙箱视口（WebContentsView）的同步贴合与延迟纠偏",
-  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.3/djtools-Setup-1.0.3.exe",
+  "changelog": "1. 彻底修复应用内自动更新重启安装时中途退出/闪退的问题（增加历史卸载器异常忽略与容错覆盖宏，避免因文件被占用导致安装终止）\n2. 优化安装程序启动方式：完全解耦父子进程树并接入 Windows 独立启动管道，确保旧进程彻底退出后释放全部文件锁\n3. 安装包下载目录迁移至系统 Temp 目录，杜绝与应用自身运行目录及用户数据发生冲突\n4. 修复远程协助被控端光标恢复机制与 Markdown 编辑器等插件宽屏自适应布局",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.4/djtools-Setup-1.0.4.exe",
   "fallbackUrls": [],
-  "size": 117080250,
-  "sha256": "a6d80380a46f774eade3887b34c1a5166c7b4e48819dd4e70f49a940f7a72126"
+  "size": 117080461,
+  "sha256": "b9b5dab0821974070b33232d665cd82aa4e5100a5db1bbc41cc27e482b72407c"
 }

@@ -1,7 +1,16 @@
+!macro customInit
+  # 安装程序启动初始化：彻底终止后台可能仍在运行的旧程序，确保文件句柄释放
+  # 严禁使用 /t 参数！若父进程树包含当前安装器，/t 会误杀安装程序自身
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "${APP_EXECUTABLE_FILENAME}"`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "doujiao.exe"`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "豆角工具箱.exe"`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "doujiao-remote-input.exe"`
+  nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "electron.exe"`
+  Sleep 1000
+!macroend
+
 !macro customCheckAppRunning
-  # 自定义运行检查：彻底终止运行中的旧实例与僵尸进程，防止文件被占用导致写入失败
-  # 注意：严禁添加 /t 参数！在线更新时安装程序是由旧版 doujiao.exe 拉起的子进程，
-  # 若使用 /t 会遍历进程树杀死父进程的所有子进程，导致安装程序自身被误杀闪退！
+  # 自定义运行检查：在释放文件前再次确保旧实例已完全退出
   DetailPrint "检查并关闭可能正在运行的实例..."
   nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "${APP_EXECUTABLE_FILENAME}"`
   nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "doujiao.exe"`
@@ -9,6 +18,25 @@
   nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "doujiao-remote-input.exe"`
   nsExec::Exec `"$SYSDIR\cmd.exe" /c taskkill /f /im "electron.exe"`
   Sleep 800
+!macroend
+
+!macro customUnInstallCheck
+  # 忽略历史旧版本卸载器的返回值，严禁因历史版本卸载冲突或退出码非0而终止安装
+  DetailPrint "旧版本卸载检查完成，继续执行覆盖安装..."
+!macroend
+
+!macro customUnInstallCheckCurrentUser
+  DetailPrint "旧版本卸载检查完成，继续执行覆盖安装..."
+!macroend
+
+!macro customRemoveFiles
+  # 自定义清理逻辑：更新场景下避免使用 un.atomicRMDir 移动文件到临时目录导致的文件占用冲突
+  ${if} ${isUpdated}
+    DetailPrint "准备更新，由新安装程序覆盖文件..."
+  ${else}
+    DetailPrint "正在清理安装目录..."
+    RMDir /r "$INSTDIR"
+  ${endif}
 !macroend
 
 !macro customInstall

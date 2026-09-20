@@ -41,8 +41,9 @@ export class AppUpdateService {
 
   private constructor() {
     const userData = app.getPath('userData')
+    const tempDir = app.getPath('temp')
     this.configFile = join(userData, 'app-update-config.json')
-    this.updateDir = join(userData, 'updates')
+    this.updateDir = join(tempDir, 'doujiao-updates')
     if (!existsSync(this.updateDir)) {
       mkdirSync(this.updateDir, { recursive: true })
     }
@@ -288,17 +289,26 @@ export class AppUpdateService {
       console.warn('[AppUpdateService] 清理托盘图标异常:', e)
     }
 
-    // 3. 通过完全分离子进程启动安装器
-    const proc = spawn(installer, [], {
-      detached: true,
-      stdio: 'ignore'
-    })
-    proc.unref()
+    // 3. 使用独立 shell 进程延迟脱钩拉起安装程序，彻底切断与当前宿主进程的父子进程树关系
+    // 并且立刻退出当前应用，保证安装器启动时宿主进程及所有文件锁已完全释放
+    if (process.platform === 'win32') {
+      const cmdStr = `ping 127.0.0.1 -n 2 >nul & start "" "${installer}"`
+      const child = spawn('cmd.exe', ['/c', cmdStr], {
+        detached: true,
+        stdio: 'ignore',
+        windowsVerbatimArguments: true
+      })
+      child.unref()
+    } else {
+      const proc = spawn(installer, [], {
+        detached: true,
+        stdio: 'ignore'
+      })
+      proc.unref()
+    }
 
-    // 4. 延迟 500ms 后强制终止宿主进程（app.exit(0) 立即让操作系统释放所有文件锁和动态库）
-    setTimeout(() => {
-      app.exit(0)
-    }, 500)
+    // 4. 立即终止宿主进程（释放所有文件锁和动态库，让安装器接管后续流程）
+    app.exit(0)
 
     return true
   }
