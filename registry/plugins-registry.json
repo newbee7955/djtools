@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "registryVersion": 110,
-  "updatedAt": "2026-09-20T08:14:50.845Z",
+  "registryVersion": 111,
+  "updatedAt": "2026-09-20T08:25:04.409Z",
   "plugins": [
     {
       "id": "douyin-downloader",
@@ -1657,7 +1657,7 @@
         {
           "version": "1.0.0",
           "channel": "stable",
-          "publishedAt": "2026-09-16T07:44:24.379Z",
+          "publishedAt": "2026-09-20T08:25:04.409Z",
           "changelog": "【v1.0.0】常规性能优化与体验改进",
           "engines": {
             "doujiao": ">=0.4.0",
@@ -1676,9 +1676,9 @@
               "platform": "any",
               "arch": "any",
               "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/screen-pin-v1.0.0.zip",
-              "size": 60175,
-              "sha256": "45b29747db1925ce0c50aa3ae9c85c29c7b63953e7f602f07af8612a070a4831",
-              "signature": "jQGtAJUBBLstOxTDOy8V8VQIAmQ5DYxNY4DLRlF9BxGM3gDFiUZqbRaPIDezxxrvPhhX5vAl9cA8mdEYVgyGDg=="
+              "size": 61137,
+              "sha256": "58f24b02dae8229a196fe3f7c7f3b498154c173f95151adfac6b0cafce93a558",
+              "signature": "vg1yyvpSGHDfPUHVm6mSNa5zJVfCfLGtISCOJk/mwqSuhsOkMhgLVDN+0LtUey8p+cd+CTg1oDJEmQ0ZMg0zCA=="
             }
           ]
         }

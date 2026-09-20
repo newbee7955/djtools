@@ -109,6 +109,26 @@ export class PluginManager {
       }
     }
 
+    // 3. 兜底容错：检查 userData/plugins/<pluginId>/versions 下的任意版本或 dist
+    const directPluginDir = join(this.userDataPluginsDir, pluginId)
+    if (existsSync(directPluginDir)) {
+      const versionsDir = join(directPluginDir, 'versions')
+      if (existsSync(versionsDir)) {
+        try {
+          const versions = readdirSync(versionsDir).filter((f) => !f.startsWith('.'))
+          if (versions.length > 0) {
+            const latest = versions.sort().reverse()[0]
+            const latestDist = join(versionsDir, latest, 'dist')
+            if (existsSync(latestDist)) return latestDist
+            const latestDir = join(versionsDir, latest)
+            if (existsSync(latestDir)) return latestDir
+          }
+        } catch {}
+      }
+      const distDir = join(directPluginDir, 'dist')
+      if (existsSync(distDir)) return distDir
+    }
+
     return null
   }
 

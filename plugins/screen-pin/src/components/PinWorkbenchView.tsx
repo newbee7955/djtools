@@ -5,10 +5,20 @@ export const PinWorkbenchView: React.FC = () => {
   const [activePins, setActivePins] = useState<PinItem[]>([])
   const [pinHistory, setPinHistory] = useState<PinItem[]>([])
   const [toastMsg, setToastMsg] = useState<string>('')
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false)
 
   const showToast = (msg: string) => {
     setToastMsg(msg)
     setTimeout(() => setToastMsg(''), 2000)
+  }
+
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
   }
 
   const loadData = async () => {
@@ -41,7 +51,109 @@ export const PinWorkbenchView: React.FC = () => {
       showToast('已从剪贴板成功创建贴图！')
       loadData()
     } else {
-      showToast('剪贴板中未检测到可用图片')
+      showToast('剪贴板中未检测到可用图片 (可直接复制图片或图片文件按 Ctrl+V)')
+    }
+  }
+
+  // 监听全局粘贴与快捷键
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return
+      }
+
+      e.preventDefault()
+
+      // 1. 如果剪贴板事件中带有文件项 (例如网页中复制的图片或文件)
+      if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+        let created = 0
+        for (let i = 0; i < e.clipboardData.files.length; i++) {
+          const file = e.clipboardData.files[i]
+          if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif|ico|svg)$/i.test(file.name)) {
+            try {
+              const dataUrl = await readFileAsDataURL(file)
+              await window.doujiaoSDK?.pin?.createPin?.({
+                dataUrl,
+                title: file.name || `贴图 #${Date.now()}`
+              })
+              created++
+            } catch (err) {
+              console.error('读取粘贴图片失败:', err)
+            }
+          }
+        }
+        if (created > 0) {
+          showToast(`已成功粘贴创建 ${created} 张贴图！`)
+          loadData()
+          return
+        }
+      }
+
+      // 2. 兜底调用宿主剪贴板贴图 (支持 Windows Explorer 复制的文件、系统截图等)
+      handlePinFromClipboard()
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        const target = e.target as HTMLElement
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+          return
+        }
+        e.preventDefault()
+        handlePinFromClipboard()
+      }
+    }
+
+    window.addEventListener('paste', handlePaste)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('paste', handlePaste)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
+
+  // 拖放贴图支持
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingOver(false)
+  }
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingOver(false)
+
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      let created = 0
+      for (let i = 0; i < e.dataTransfer.files.length; i++) {
+        const file = e.dataTransfer.files[i]
+        if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif|ico|svg)$/i.test(file.name)) {
+          try {
+            const dataUrl = await readFileAsDataURL(file)
+            await window.doujiaoSDK?.pin?.createPin?.({
+              dataUrl,
+              title: file.name || `拖放贴图 #${Date.now()}`
+            })
+            created++
+          } catch (err) {
+            console.error('读取拖放图片失败:', err)
+          }
+        }
+      }
+      if (created > 0) {
+        showToast(`成功创建 ${created} 张桌面贴图！`)
+        loadData()
+      } else {
+        showToast('拖放的文件不是支持的图片格式')
+      }
     }
   }
 
@@ -94,7 +206,23 @@ export const PinWorkbenchView: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-slate-950 text-slate-100 p-6 overflow-y-auto select-none">
+    <div
+      className={`relative w-full h-full flex flex-col bg-slate-950 text-slate-100 p-6 overflow-y-auto select-none transition-colors ${
+        isDraggingOver ? 'bg-sky-950/30 ring-2 ring-sky-500/50' : ''
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* 拖拽悬停遮罩提示 */}
+      {isDraggingOver && (
+        <div className="absolute inset-0 z-40 bg-sky-950/80 backdrop-blur-sm border-2 border-dashed border-sky-400 rounded-2xl flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-4xl mb-2 animate-bounce">📥</span>
+          <span className="text-sm font-semibold text-sky-200">松开鼠标即可立即贴在桌面</span>
+          <span className="text-xs text-sky-400 mt-1">支持 PNG, JPG, WebP, GIF, SVG 等格式</span>
+        </div>
+      )}
+
       {/* 顶部标题与功能操作区 */}
       <div className="flex items-center justify-between pb-6 border-b border-slate-800">
         <div className="flex items-center gap-3">
@@ -115,7 +243,7 @@ export const PinWorkbenchView: React.FC = () => {
             onClick={handlePinFromClipboard}
           >
             <span>📋</span>
-            <span>剪贴板贴图 (Alt+F3)</span>
+            <span>剪贴板贴图 (Ctrl+V / Alt+F3)</span>
           </button>
           <button
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700/80 active:scale-95 transition-all"
@@ -141,10 +269,10 @@ export const PinWorkbenchView: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span>剪贴板贴图</span>
             <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] font-mono text-sky-400 font-bold">
-              Alt + F3
+              Ctrl+V / Alt+F3
             </kbd>
           </div>
-          <span className="text-[11px] text-slate-500">复制图片后随时一键钉在桌面</span>
+          <span className="text-[11px] text-slate-500">复制图片或图片文件后直接按 Ctrl+V 贴图</span>
         </div>
 
         <div className="p-3 bg-slate-900/60 border border-slate-800/80 rounded-2xl flex flex-col gap-1">
@@ -213,7 +341,7 @@ export const PinWorkbenchView: React.FC = () => {
             <span className="text-3xl mb-2">📌</span>
             <span className="text-xs text-slate-400">桌面当前没有活动的贴图浮窗</span>
             <span className="text-[11px] text-slate-500 mt-1">
-              按 <span className="text-sky-400 font-mono">Alt+F3</span> 直接粘贴剪贴板图片，或使用系统截图工具 (Ctrl+Alt+A) 划选贴图
+              按 <span className="text-sky-400 font-mono">Ctrl+V</span> 或 <span className="text-sky-400 font-mono">Alt+F3</span> 直接粘贴剪贴板图片，也可直接拖放图片到此处
             </span>
           </div>
         ) : (

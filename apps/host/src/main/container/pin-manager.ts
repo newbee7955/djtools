@@ -154,11 +154,18 @@ export class PinManager {
       console.warn(`[PinManager] 加载贴图插件页面失败:`, err.message)
     })
 
+    // 双重保证窗口展示：ready-to-show 或 500ms 超时兜底
+    let hasShown = false
+    const doShow = () => {
+      if (hasShown || win.isDestroyed()) return
+      hasShown = true
+      win.show()
+      win.focus()
+    }
+    const showTimeout = setTimeout(doShow, 500)
     win.once('ready-to-show', () => {
-      if (!win.isDestroyed()) {
-        win.show()
-        win.focus()
-      }
+      clearTimeout(showTimeout)
+      doShow()
     })
 
     // 监听移动与尺寸调整
@@ -200,10 +207,86 @@ export class PinManager {
   }
 
   /**
-   * 从剪贴板直接贴图
+   * 从剪贴板直接贴图 (支持位图、Windows 资源管理器复制的文件路径、文本路径/URL、DataURL 等)
    */
   public pinFromClipboard(): string | null {
-    const img = clipboard.readImage()
+    let img = clipboard.readImage()
+    let customTitle = ''
+
+    // 1. 检查 Windows 资源管理器/桌面复制的文件列表 (CF_HDROP / FileNameW)
+    if (img.isEmpty()) {
+      try {
+        const fileBuffer = clipboard.readBuffer('FileNameW')
+        if (fileBuffer && fileBuffer.length >= 2) {
+          const text = fileBuffer.toString('ucs2')
+          const files = text.split('\0').filter((p) => p.length > 0)
+          for (const filePath of files) {
+            if (filePath && /\.(png|jpe?g|webp|bmp|gif|ico|svg|tiff?)$/i.test(filePath) && existsSync(filePath)) {
+              img = nativeImage.createFromPath(filePath)
+              if (!img.isEmpty()) {
+                const parts = filePath.split(/[\\/]/)
+                customTitle = parts[parts.length - 1] || ''
+                break
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[PinManager] 读取剪贴板 FileNameW 失败:', err)
+      }
+    }
+
+    // 2. 检查纯文本或 URI 路径 (如复制的本地文件路径、file:// 链接、或 DataURL)
+    if (img.isEmpty()) {
+      try {
+        const text = clipboard.readText()?.trim()
+        if (text) {
+          if (text.startsWith('data:image/')) {
+            return this.createPin({
+              dataUrl: text,
+              title: `剪贴板贴图 #${this.pins.size + 1}`
+            })
+          }
+          const lines = text.split(/\r?\n/)
+          for (const line of lines) {
+            let p = line.trim().replace(/^["']|["']$/g, '').replace(/^file:\/\/\/?/, '')
+            try {
+              p = decodeURIComponent(p)
+            } catch {}
+            p = p.replace(/\//g, '\\')
+            if (p && /\.(png|jpe?g|webp|bmp|gif|ico|svg|tiff?)$/i.test(p) && existsSync(p)) {
+              img = nativeImage.createFromPath(p)
+              if (!img.isEmpty()) {
+                const parts = p.split(/[\\/]/)
+                customTitle = parts[parts.length - 1] || ''
+                break
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[PinManager] 读取剪贴板文本路径失败:', err)
+      }
+    }
+
+    // 3. 检查 HTML 内容中的 <img> 标签
+    if (img.isEmpty()) {
+      try {
+        const html = clipboard.readHTML()
+        if (html) {
+          const match = html.match(/<img[^>]+src=["'](data:image\/[^"']+)["']/i)
+          if (match && match[1]) {
+            return this.createPin({
+              dataUrl: match[1],
+              title: `剪贴板贴图 #${this.pins.size + 1}`
+            })
+          }
+        }
+      } catch (err) {
+        console.warn('[PinManager] 读取剪贴板 HTML 失败:', err)
+      }
+    }
+
     if (img.isEmpty()) {
       return null
     }
@@ -213,7 +296,7 @@ export class PinManager {
 
     return this.createPin({
       dataUrl,
-      title: `剪贴板贴图 #${this.pins.size + 1}`
+      title: customTitle || `剪贴板贴图 #${this.pins.size + 1}`
     })
   }
 

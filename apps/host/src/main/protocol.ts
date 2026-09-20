@@ -1,5 +1,5 @@
 import { protocol, net, app } from 'electron'
-import { join, normalize } from 'path'
+import { join, normalize, resolve } from 'path'
 import { pathToFileURL } from 'url'
 import { existsSync } from 'fs'
 import { PluginManager } from './plugins/plugin-manager'
@@ -42,7 +42,24 @@ export function registerPluginProtocol(): void {
       }
 
       // 定位插件根目录：通过 PluginManager 获取（支持开发环境与不可变版本指针）
-      const baseDir = PluginManager.getInstance().getActiveVersionDir(pluginId)
+      let baseDir = PluginManager.getInstance().getActiveVersionDir(pluginId)
+
+      if (!baseDir) {
+        // 兜底检查：在开发源码 plugins/ 目录定位
+        const devCandidates = [
+          resolve(app.getAppPath(), '../../plugins', pluginId, 'dist'),
+          resolve(app.getAppPath(), '../plugins', pluginId, 'dist'),
+          resolve(app.getAppPath(), 'plugins', pluginId, 'dist'),
+          resolve(process.cwd(), 'plugins', pluginId, 'dist'),
+          resolve(__dirname, '../../../../plugins', pluginId, 'dist')
+        ]
+        for (const p of devCandidates) {
+          if (existsSync(p)) {
+            baseDir = p
+            break
+          }
+        }
+      }
 
       if (!baseDir) {
         console.error(`[PluginProtocol] 找不到插件根目录: ${pluginId}`)

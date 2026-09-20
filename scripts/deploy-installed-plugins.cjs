@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const cliArgs = process.argv.slice(2);
-const pluginsToDeploy = cliArgs.length > 0 ? cliArgs : ['dev-toys', 'media-converter', 'ocr-recognizer', 'markdown-editor'];
+const pluginsToDeploy = cliArgs.length > 0 ? cliArgs : ['dev-toys', 'media-converter', 'ocr-recognizer', 'markdown-editor', 'screen-pin'];
 const appDataPluginsDir = path.join(
   process.env.APPDATA || path.join(process.env.USERPROFILE, 'AppData', 'Roaming'),
   '@doujiao',

@@ -498,10 +498,39 @@ export const PinFloatingView: React.FC<Props> = ({ pinId }) => {
         handleSaveAs()
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (isAnnotating) handleUndo()
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        if ((e.target as HTMLElement).tagName !== 'INPUT') {
+          e.preventDefault()
+          window.doujiaoSDK?.pin?.pinFromClipboard?.().then((res) => {
+            if (res) {
+              showToast('已从剪贴板创建新贴图')
+            } else {
+              showToast('剪贴板中未检测到可用图片')
+            }
+          })
+        }
       }
     }
+
+    const handlePaste = (e: ClipboardEvent) => {
+      if ((e.target as HTMLElement).tagName !== 'INPUT') {
+        e.preventDefault()
+        window.doujiaoSDK?.pin?.pinFromClipboard?.().then((res) => {
+          if (res) {
+            showToast('已从剪贴板创建新贴图')
+          } else {
+            showToast('剪贴板中未检测到可用图片')
+          }
+        })
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('paste', handlePaste)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('paste', handlePaste)
+    }
   })
 
   return (
