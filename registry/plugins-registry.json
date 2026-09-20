@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "registryVersion": 111,
-  "updatedAt": "2026-09-20T08:25:04.409Z",
+  "registryVersion": 112,
+  "updatedAt": "2026-09-20T09:06:37.837Z",
   "plugins": [
     {
       "id": "douyin-downloader",
@@ -1654,6 +1654,34 @@
       "description": "桌面置顶贴图神器，支持滚轮缩放、透明度调节、鼠标穿透临摹、就地高级涂鸦标注与色值吸取",
       "icon": "📌",
       "releases": [
+        {
+          "version": "1.0.1",
+          "channel": "stable",
+          "publishedAt": "2026-09-20T09:06:37.837Z",
+          "changelog": "【v1.0.1】剪贴板贴图与拖放增强：支持 Ctrl+V 快捷粘贴贴图；支持把图片文件直接拖拽到贴图工作台一键钉在桌面；剪贴板识别扩展至 Windows 资源管理器复制的图片文件、复制的文件路径/URL、网页 DataURL 等来源，并自动以文件名作为贴图标题；修复贴图浮窗偶发首次打开不显示的问题。",
+          "engines": {
+            "doujiao": ">=0.4.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "screen.pin"
+            },
+            {
+              "capability": "clipboard.history"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/screen-pin-v1.0.1.zip",
+              "size": 61422,
+              "sha256": "53b68907f405443327062779e9ef9702efc5e74de66f7b6eb986698ed2321c83",
+              "signature": "QudaT5GQb6cfd2ykB7mcS/zVVTcAAGigtQN5N/Q5z0YalSVHB8DQY81GdfC/fdFCQFs+7TcxBmSwvP+p5fpsDQ=="
+            }
+          ]
+        },
         {
           "version": "1.0.0",
           "channel": "stable",
