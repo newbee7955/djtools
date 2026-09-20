@@ -29,7 +29,9 @@ export interface AppUpdateConfig {
 }
 
 const GITHUB_VERSION_ENDPOINTS = [
-  'https://raw.githubusercontent.com/newbee7955/djtools/main/registry/app-version.json'
+  'https://raw.githubusercontent.com/newbee7955/djtools/main/registry/app-version.json',
+  'https://cdn.jsdelivr.net/gh/newbee7955/djtools@main/registry/app-version.json',
+  'https://ghproxy.net/https://raw.githubusercontent.com/newbee7955/djtools/main/registry/app-version.json'
 ]
 
 export class AppUpdateService {

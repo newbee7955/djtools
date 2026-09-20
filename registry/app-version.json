@@ -1,10 +1,12 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "releaseDate": "2026-09-20",
   "productName": "豆角工具箱",
-  "changelog": "1. 彻底解决远程协助控制端双光标重影问题（控制端默认启用「仅远端光标」无重影模式，隐藏本地重复指针，完美呈现远端系统真实光标）\n2. 增加光标模式自由切换：控制端可随时在「仅远端光标（默认无重影）」与「本地+远端（适合高延迟网络）」之间灵活切换\n3. 保持被控端光标正常可见，杜绝篡改系统级光标配置\n4. 包含 v1.0.4 自动更新解耦与容错安装的全部修复",
-  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.5/djtools-Setup-1.0.5.exe",
-  "fallbackUrls": [],
-  "size": 117080693,
-  "sha256": "59447d4b87734b943465b9c037d71667646b39c7310c9a2a4517c42e8d9a3782"
+  "changelog": "1. 远程协助全面迁移至 C++ 原生 DXGI 屏幕采集模块，彻底根除双光标重影与延迟残影\n2. 0ms 本地即时光标与远端光标形状动态同步（自动变换箭头、手型、I型光标等）\n3. 受控端系统物理光标完整无损保留，杜绝破坏系统级光标\n4. 纯净流直入 WebRTC 硬件编码管线，主进程 V8 零内存中转与零 GC 抖动",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.6/djtools-Setup-1.0.6.exe",
+  "fallbackUrls": [
+    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v1.0.6/djtools-Setup-1.0.6.exe"
+  ],
+  "size": 117196442,
+  "sha256": "9936d912b819e8fc0f05b5df378487f2eb28373823d584a6f839892ee2093998"
 }
