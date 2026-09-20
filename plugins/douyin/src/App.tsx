@@ -273,7 +273,7 @@ export default function App(): JSX.Element {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-8 select-none">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         {/* 顶部头部与认证条 */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-5">
           <div className="flex items-center gap-3">

@@ -103,35 +103,17 @@ static auto g_suppressedUntil = std::chrono::steady_clock::now();
 static bool g_cursorsHidden = false;
 static bool g_wantCursorHidden = false;
 
-static HCURSOR createBlankCursor() {
-    const int w = 32;
-    const int h = 32;
-    std::vector<BYTE> andMask(static_cast<size_t>(w * h / 8), 0xFF);
-    std::vector<BYTE> xorMask(static_cast<size_t>(w * h / 8), 0x00);
-    return CreateCursor(NULL, 0, 0, w, h, andMask.data(), xorMask.data());
+static void restoreSystemCursors() {
+    // 强制通知 Windows 重新加载系统默认光标主题，恢复被篡改或隐藏的光标
+    SystemParametersInfo(SPI_SETCURSORS, 0, NULL, 0);
+    g_cursorsHidden = false;
 }
 
 static void hideSystemCursors() {
-    if (g_cursorsHidden) return;
-    HCURSOR blank = createBlankCursor();
-    if (!blank) return;
-    const DWORD ids[] = {
-        OCR_NORMAL, OCR_IBEAM, OCR_WAIT, OCR_CROSS, OCR_UP,
-        OCR_SIZENWSE, OCR_SIZENESW, OCR_SIZEWE, OCR_SIZENS,
-        OCR_SIZEALL, OCR_NO, OCR_HAND, OCR_APPSTARTING
-    };
-    for (DWORD id : ids) {
-        HCURSOR copy = CopyCursor(blank);
-        if (copy) SetSystemCursor(copy, id);
-    }
-    DestroyCursor(blank);
-    g_cursorsHidden = true;
-}
-
-static void restoreSystemCursors() {
-    if (!g_cursorsHidden) return;
-    SystemParametersInfo(SPI_SETCURSORS, 0, NULL, 0);
-    g_cursorsHidden = false;
+    // 严禁使用 SetSystemCursor 替换全局空白光标！
+    // 替换系统光标会导致被控端整台电脑的鼠标指针消失且异常退出时无法自愈。
+    // 此处始终主动恢复光标，确保光标可见。
+    restoreSystemCursors();
 }
 
 static void releaseAll() {
@@ -254,6 +236,7 @@ int main(int argc, char* argv[]) {
 
     // Ensure clean exit releases all keys on unexpected termination
     std::atexit(releaseAll);
+    restoreSystemCursors();
 
     std::string line;
     while (std::getline(std::cin, line)) {

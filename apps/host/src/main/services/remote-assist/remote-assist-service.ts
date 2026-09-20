@@ -471,9 +471,6 @@ export class RemoteAssistService {
     if (grantedPermission === 'control' && this.inputHelper) {
       try {
         await this.inputHelper.start(sessionToken)
-        if (typeof this.inputHelper.setCursorHidden === 'function') {
-          this.inputHelper.setCursorHidden(true)
-        }
       } catch (err) {
         console.error('[RemoteAssistService] 启动原生输入助手失败:', err)
       }

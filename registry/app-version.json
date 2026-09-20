@@ -1,10 +1,10 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "releaseDate": "2026-09-20",
   "productName": "豆角工具箱",
-  "changelog": "1. 彻底修复自动更新重启安装半途闪退 Bug（移除 NSIS 中 taskkill /t 递归进程树误杀，确保安装包顺利完成）\n2. 安装与卸载阶段增加 doujiao-remote-input.exe 辅助进程安全清理\n3. 更新安装退出机制优化，主动注销托盘并强制释放文件锁\n4. 包含 v1.0.1 远程协助 15/30/60 FPS 实时动态切换与局域网协助稳定性优化",
-  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.2/djtools-Setup-1.0.2.exe",
+  "changelog": "1. 修复远程协助被控端在会话结束或异常退出时光标消失的问题（移除全局隐藏光标，增加强制恢复光标）\n2. 修复 Markdown 编辑器「即时渲染」与「纯预览」在窗口最大化或宽屏下未铺满全屏的问题（移除 860px/768px 固定限制，全面自适应全屏）\n3. 优化抖音下载等插件在宽屏下的响应式布局，解除固定宽度约束\n4. 增强宿主窗口缩放、最大化、还原、全屏等全部生命周期事件对插件沙箱视口（WebContentsView）的同步贴合与延迟纠偏",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.3/djtools-Setup-1.0.3.exe",
   "fallbackUrls": [],
-  "size": 117080419,
-  "sha256": "9aab4c300c21c147490a88d6bb66372192dbd358d99dc45764efedf46bb74e08"
+  "size": 117080250,
+  "sha256": "a6d80380a46f774eade3887b34c1a5166c7b4e48819dd4e70f49a940f7a72126"
 }

@@ -1348,7 +1348,7 @@ export default function App(): JSX.Element {
               {viewMode === 'preview' && (
                 <div className="w-full h-full overflow-y-auto p-8 bg-slate-900/40 select-text">
                   <div
-                    className="max-w-3xl mx-auto prose prose-invert"
+                    className="w-full max-w-none prose prose-invert"
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(activeDoc.content) }}
                   />
                 </div>

@@ -258,8 +258,23 @@ button[class*="bg-indigo-500"]:not([class*="/"]):not([class*="bg-indigo-50"]) *,
   line-height: 1.8 !important;
   color: inherit !important;
   padding: 24px 32px !important;
-  max-width: 860px;
-  margin: 0 auto;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.vditor-ir pre.vditor-reset {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.vditor-reset table {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .vditor-reset h1,

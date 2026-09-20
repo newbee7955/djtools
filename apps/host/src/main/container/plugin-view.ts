@@ -385,10 +385,20 @@ export class PluginViewContainerManager {
   public init(mainWindow: BrowserWindow): void {
     this.mainWindow = mainWindow
 
-    // 监听主窗口 resize 自动更新当前活跃 view 的 bounds
-    mainWindow.on('resize', () => {
+    const onBoundsChange = () => {
       this.updateViewBounds()
-    })
+      // Windows 上窗口最大化/还原时偶发异步尺寸延迟，追加一次延迟刷新确保贴合
+      setTimeout(() => this.updateViewBounds(), 50)
+    }
+
+    // 监听主窗口各类缩放、最大化、还原与全屏事件，确保视口始终精确贴合
+    mainWindow.on('resize', onBoundsChange)
+    mainWindow.on('resized', onBoundsChange)
+    mainWindow.on('maximize', onBoundsChange)
+    mainWindow.on('unmaximize', onBoundsChange)
+    mainWindow.on('restore', onBoundsChange)
+    mainWindow.on('enter-full-screen', onBoundsChange)
+    mainWindow.on('leave-full-screen', onBoundsChange)
   }
 
   public setTheme(theme: string): void {
