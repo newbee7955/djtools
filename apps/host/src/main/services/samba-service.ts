@@ -268,7 +268,9 @@ export class SambaService {
         if (err) return reject(err)
         if (!Array.isArray(files)) return resolve([])
 
-        const items: SambaFileItem[] = files.map((f: any) => {
+        const items: SambaFileItem[] = files
+          .filter((f: any) => f && f.name !== '.' && f.name !== '..')
+          .map((f: any) => {
           const isDir = typeof f.isDirectory === 'function' ? f.isDirectory() : Boolean(f.isDirectory)
           const ext = isDir ? '' : path.extname(f.name || '').toLowerCase().replace('.', '')
           const itemPath = normPath ? `${normPath}\\${f.name}` : f.name

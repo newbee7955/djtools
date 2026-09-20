@@ -3,8 +3,8 @@
   "id": "samba-manager",
   "publisher": "doujiao-official",
   "name": "Samba 文件管理",
-  "version": "1.0.2",
-  "changelog": "【v1.0.2】缩略图优化：实现视口可见性懒加载（IntersectionObserver），避免一次性加载全目录缩略图；退出或切换目录时立即清空任务队列并切断后台视频流。",
+  "version": "1.0.3",
+  "changelog": "【v1.0.3】目录导航与交互增强：新增「返回上一级」工具栏按钮与 Alt+Up 快捷键；列表/网格顶层新增「.. 返回上级目录」快捷操作；新增路径直达输入跳转（✏️）；支持层级面包屑点击直达任意一级目录；过滤 Samba 原生 . 与 .. 目录项。",
   "description": "专业 NAS/Samba 文件浏览器：支持自定义端口与用户配置、流式上传下载、文件浏览与目录创建、文本预览以及图片视频智能缩略图与在线流式播放",
   "icon": "🗄️",
   "engines": {

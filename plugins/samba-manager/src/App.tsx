@@ -179,6 +179,8 @@ export default function App(): JSX.Element {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [sortBy, setSortBy] = useState<'name' | 'size' | 'mtime'>('name')
   const [sortAsc, setSortAsc] = useState<boolean>(true)
+  const [isEditingPath, setIsEditingPath] = useState<boolean>(false)
+  const [pathInputValue, setPathInputValue] = useState<string>('')
 
   // 缩略图缓存 (path -> dataUrl)
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({})
@@ -347,18 +349,31 @@ export default function App(): JSX.Element {
     }
   }
 
-  // 监听 Esc 快捷键关闭预览弹窗
+  // 返回上一级目录
+  const navigateUp = useCallback(() => {
+    if (!currentPath || !activeProfileId) return
+    const parts = currentPath.split(/[\/\\]/).filter(Boolean)
+    parts.pop()
+    const parentPath = parts.join('/')
+    loadDirectory(activeProfileId, parentPath)
+  }, [currentPath, activeProfileId, loadDirectory])
+
+  // 监听 Esc 快捷键关闭预览/编辑 / Alt+Up 返回上级
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (previewVideo) setPreviewVideo(null)
+        if (isEditingPath) setIsEditingPath(false)
+        else if (previewVideo) setPreviewVideo(null)
         else if (previewImage) setPreviewImage(null)
         else if (previewText) setPreviewText(null)
+      } else if (e.altKey && e.key === 'ArrowUp') {
+        e.preventDefault()
+        navigateUp()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [previewVideo, previewImage, previewText])
+  }, [previewVideo, previewImage, previewText, isEditingPath, navigateUp])
 
   // 前端免 FFmpeg 视频硬件解码抽帧逻辑
   const extractVideoThumbnailInBrowser = async (
@@ -557,7 +572,7 @@ export default function App(): JSX.Element {
 
   // 过滤与排序
   const filteredFiles = useMemo(() => {
-    let result = fileList
+    let result = fileList.filter((f) => f.name !== '.' && f.name !== '..')
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim()
       result = result.filter((f) => f.name.toLowerCase().includes(q))
@@ -933,23 +948,68 @@ export default function App(): JSX.Element {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
         {/* 顶栏控制台 */}
         <div className="h-14 px-5 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between gap-4">
-          {/* 面包屑导航 */}
+          {/* 面包屑导航与路径直达 */}
           <div className="flex items-center gap-1.5 overflow-x-auto py-1 text-xs text-slate-300 min-w-0 flex-1">
-            {breadcrumbs.map((crumb, idx) => (
-              <React.Fragment key={crumb.path}>
-                {idx > 0 && <span className="text-slate-600">/</span>}
+            {/* 返回上一级按钮 */}
+            <button
+              onClick={navigateUp}
+              disabled={!currentPath}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
+              title="返回上级目录 (Alt+↑)"
+            >
+              ⬆️
+            </button>
+
+            {isEditingPath ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  setIsEditingPath(false)
+                  const cleanPath = pathInputValue.trim().replace(/^[\/\\]+|[\/\\]+$/g, '')
+                  loadDirectory(activeProfileId, cleanPath)
+                }}
+                className="flex-1 flex items-center gap-2 max-w-md"
+              >
+                <input
+                  type="text"
+                  autoFocus
+                  value={pathInputValue}
+                  onChange={(e) => setPathInputValue(e.target.value)}
+                  onBlur={() => setIsEditingPath(false)}
+                  placeholder="输入目录路径后回车，如: photos/2026"
+                  className="w-full px-2.5 py-1 text-xs rounded-lg bg-slate-950 border border-emerald-500 text-white font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </form>
+            ) : (
+              <div className="flex items-center gap-1 overflow-x-auto py-1 min-w-0">
+                {breadcrumbs.map((crumb, idx) => (
+                  <React.Fragment key={crumb.path}>
+                    {idx > 0 && <span className="text-slate-600">/</span>}
+                    <button
+                      onClick={() => loadDirectory(activeProfileId, crumb.path)}
+                      className={`px-2 py-1 rounded hover:bg-slate-800 font-medium transition-colors truncate max-w-[150px] ${
+                        idx === breadcrumbs.length - 1
+                          ? 'text-emerald-400 bg-slate-800/50'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title={`进入目录: ${crumb.name}`}
+                    >
+                      {crumb.name}
+                    </button>
+                  </React.Fragment>
+                ))}
                 <button
-                  onClick={() => loadDirectory(activeProfileId, crumb.path)}
-                  className={`px-2 py-1 rounded hover:bg-slate-800 font-medium transition-colors truncate max-w-[150px] ${
-                    idx === breadcrumbs.length - 1
-                      ? 'text-emerald-400 bg-slate-800/50'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
+                  onClick={() => {
+                    setPathInputValue(currentPath)
+                    setIsEditingPath(true)
+                  }}
+                  className="p-1 rounded text-slate-500 hover:text-slate-300 hover:bg-slate-800 text-xs flex-shrink-0"
+                  title="输入路径快速跳转"
                 >
-                  {crumb.name}
+                  ✏️
                 </button>
-              </React.Fragment>
-            ))}
+              </div>
+            )}
           </div>
 
           {/* 搜索与视图切换工具 */}
@@ -1094,6 +1154,22 @@ export default function App(): JSX.Element {
           ) : viewMode === 'grid' ? (
             /* 网格卡片视图 (带大图/视频智能缩略图) */
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {/* 返回上一级快捷卡片 */}
+              {currentPath && (
+                <div
+                  onClick={navigateUp}
+                  className="group relative bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/80 hover:border-emerald-500/50 rounded-xl p-3 cursor-pointer transition-all flex flex-col justify-between shadow-sm hover:shadow-md select-none"
+                  title="返回上一级目录 (Alt+↑)"
+                >
+                  <div className="w-full aspect-[4/3] rounded-lg bg-slate-950/60 flex items-center justify-center overflow-hidden mb-2.5">
+                    <span className="text-3xl text-amber-400 group-hover:scale-110 transition-transform">⤴️</span>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-emerald-400 truncate">..</div>
+                    <div className="text-[10px] text-slate-500 font-mono mt-1">返回上级目录</div>
+                  </div>
+                </div>
+              )}
               {filteredFiles.map((item) => {
                 const thumb = thumbnails[item.path]
 
@@ -1180,6 +1256,24 @@ export default function App(): JSX.Element {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
+                  {/* 返回上一级快捷行 */}
+                  {currentPath && (
+                    <tr
+                      onClick={navigateUp}
+                      className="hover:bg-slate-800/50 cursor-pointer transition-colors group text-emerald-400 select-none"
+                      title="返回上一级目录 (Alt+↑)"
+                    >
+                      <td className="py-2.5 px-4 flex items-center gap-3">
+                        <div className="w-7 h-7 rounded bg-slate-950 flex items-center justify-center text-sm flex-shrink-0">
+                          ⤴️
+                        </div>
+                        <span className="font-semibold truncate max-w-md">.. (返回上一级目录)</span>
+                      </td>
+                      <td className="py-2.5 px-4 font-mono text-slate-500">-</td>
+                      <td className="py-2.5 px-4 font-mono text-slate-500">-</td>
+                      <td className="py-2.5 px-4 text-right text-slate-500 text-[11px]">上级目录</td>
+                    </tr>
+                  )}
                   {filteredFiles.map((item) => {
                     const thumb = thumbnails[item.path]
                     return (
