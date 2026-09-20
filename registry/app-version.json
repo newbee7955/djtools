@@ -1,10 +1,10 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "releaseDate": "2026-09-20",
   "productName": "豆角工具箱",
-  "changelog": "1. 彻底修复应用内自动更新重启安装时中途退出/闪退的问题（增加历史卸载器异常忽略与容错覆盖宏，避免因文件被占用导致安装终止）\n2. 优化安装程序启动方式：完全解耦父子进程树并接入 Windows 独立启动管道，确保旧进程彻底退出后释放全部文件锁\n3. 安装包下载目录迁移至系统 Temp 目录，杜绝与应用自身运行目录及用户数据发生冲突\n4. 修复远程协助被控端光标恢复机制与 Markdown 编辑器等插件宽屏自适应布局",
-  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.4/djtools-Setup-1.0.4.exe",
+  "changelog": "1. 彻底解决远程协助控制端双光标重影问题（控制端默认启用「仅远端光标」无重影模式，隐藏本地重复指针，完美呈现远端系统真实光标）\n2. 增加光标模式自由切换：控制端可随时在「仅远端光标（默认无重影）」与「本地+远端（适合高延迟网络）」之间灵活切换\n3. 保持被控端光标正常可见，杜绝篡改系统级光标配置\n4. 包含 v1.0.4 自动更新解耦与容错安装的全部修复",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.5/djtools-Setup-1.0.5.exe",
   "fallbackUrls": [],
-  "size": 117080461,
-  "sha256": "b9b5dab0821974070b33232d665cd82aa4e5100a5db1bbc41cc27e482b72407c"
+  "size": 117080693,
+  "sha256": "59447d4b87734b943465b9c037d71667646b39c7310c9a2a4517c42e8d9a3782"
 }

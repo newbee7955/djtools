@@ -360,7 +360,7 @@ export class RemoteAssistSessionWindow {
         <option value="15">15 FPS</option>
       </select>
       <span id="fpsStatus" style="font-size:12px;color:#94a3b8;min-width:60px;"></span>
-      <button class="btn-disconnect" id="cursorModeBtn" style="background: #334155;" title="切换本地即时光标(0ms响应)或仅远端光标">本地光标: 开</button>
+      <button class="btn-disconnect" id="cursorModeBtn" style="background: #334155;" title="切换光标模式：仅远端光标(默认无重影) 或 开启本地即时光标">光标: 仅远端</button>
       <button class="btn-disconnect" id="fullscreenBtn" style="background: #334155;" title="全屏显示 (F11)">全屏</button>
       <button class="btn-disconnect" id="disconnectBtn">断开连接</button>
     </div>

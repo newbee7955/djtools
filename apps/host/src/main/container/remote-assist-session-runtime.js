@@ -29,7 +29,7 @@
     let lastPointerSendTime = 0;   // 上次发送时间戳
     let lastEncodeStats = { encodeMs: undefined, codec: '', encoderImplementation: '', qualityLimitationReason: '' };
     let encodeStatsLogged = false;
-    let localCursorEnabled = true;
+    let localCursorEnabled = false;
     let remoteCursorHidden = permission === 'control';
     let statsTimer = null;
     let directFallbackTimer = null;
@@ -1579,16 +1579,20 @@
 
       if (permission !== 'control' || !video) return;
 
-      // 本地硬件光标：控制端默认启用本地系统光标，实现 0ms 实时跟手响应
+      // 控制端默认隐藏本地光标，仅显示远端画面内的真实光标，彻底消除双光标/重影现象
       const cursorBtn = document.getElementById('cursorModeBtn');
-      video.style.cursor = 'default';
+      video.style.cursor = 'none';
       if (cursorBtn) {
+        cursorBtn.textContent = '光标: 仅远端';
+        cursorBtn.style.background = '#334155';
         cursorBtn.addEventListener('click', () => {
           localCursorEnabled = !localCursorEnabled;
           video.style.cursor = localCursorEnabled ? 'default' : 'none';
-          cursorBtn.textContent = localCursorEnabled ? '本地光标: 开' : '本地光标: 关';
-          cursorBtn.style.background = localCursorEnabled ? '#334155' : '#475569';
-          sendRemoteCursorState(localCursorEnabled);
+          cursorBtn.textContent = localCursorEnabled ? '光标: 本地+远端' : '光标: 仅远端';
+          cursorBtn.style.background = localCursorEnabled ? '#0284c7' : '#334155';
+          cursorBtn.title = localCursorEnabled
+            ? '当前为本地+远端双光标(适合高延迟网络)，点击切换为仅远端光标'
+            : '当前为仅远端光标(无重影)，点击开启本地即时光标';
         });
       }
 
