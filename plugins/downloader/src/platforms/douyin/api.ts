@@ -5,7 +5,7 @@ import type {
   DouyinUserItem,
   DouyinUserVideosResult,
   DouyinQualityOption
-} from '../types'
+} from './types'
 import { parseDouyinInput } from './parser'
 
 /**
@@ -395,6 +395,23 @@ export async function parseDouyin(input: string, sdk: DoujiaoSDK): Promise<Douyi
 }
 
 /**
+ * 将官方 API 返回的 raw author/user_item 规整为统一的 DouyinUserItem
+ */
+export function mapUserItem(u: any): DouyinUserItem {
+  return {
+    secUid: u?.sec_uid || '',
+    uid: u?.uid || '',
+    nickname: u?.nickname || '未知用户',
+    avatar: u?.avatar_thumb?.url_list?.[0] || u?.avatar_medium?.url_list?.[0] || '',
+    uniqueId: u?.unique_id || u?.short_id || '',
+    signature: u?.signature || '',
+    followerCount: u?.follower_count || 0,
+    totalFavorited: u?.total_favorited || 0,
+    awemeCount: u?.aweme_count || 0
+  }
+}
+
+/**
  * 按用户名或关键词搜索创作者
  */
 export async function searchUsers(keyword: string, sdk: DoujiaoSDK): Promise<DouyinUserItem[]> {
@@ -422,20 +439,7 @@ export async function searchUsers(keyword: string, sdk: DoujiaoSDK): Promise<Dou
   }
 
   const rawList: any[] = json?.user_list || json?.data || []
-  return rawList.map((item) => {
-    const u = item.user_info || item
-    return {
-      secUid: u.sec_uid || '',
-      uid: u.uid || '',
-      nickname: u.nickname || '未知用户',
-      avatar: u.avatar_thumb?.url_list?.[0] || u.avatar_medium?.url_list?.[0] || '',
-      uniqueId: u.unique_id || u.short_id || '',
-      signature: u.signature || '',
-      followerCount: u.follower_count || 0,
-      totalFavorited: u.total_favorited || 0,
-      awemeCount: u.aweme_count || 0
-    }
-  })
+  return rawList.map((item) => mapUserItem(item.user_info || item))
 }
 
 /**
@@ -463,7 +467,13 @@ export async function fetchUserVideos(
   const awemeList: any[] = json?.aweme_list || []
   const videos = awemeList.map(mapAwemeItem)
 
+  // 作品接口本身不返回作者资料，从首条作品的 author 中回填，
+  // 否则调用方拿不到昵称/头像（标题会退化成「创作者 的作品列表」）
+  const author = awemeList[0]?.author
+  const user = author ? mapUserItem({ ...author, sec_uid: author.sec_uid || secUid }) : undefined
+
   return {
+    user,
     videos,
     hasMore: json?.has_more === 1,
     maxCursor: json?.max_cursor || 0

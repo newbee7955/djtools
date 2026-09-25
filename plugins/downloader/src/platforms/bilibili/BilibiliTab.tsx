@@ -1,41 +1,31 @@
 import React, { useState, useEffect } from 'react'
 import { getSDK } from '@doujiao/plugin-sdk'
-import { extractBiliId } from './lib/parser'
-import { resolveBiliShortLink, getVideoDetail, getPlayStream, BILI_QUALITY_OPTIONS, getQualityLabel } from './lib/api'
+import { extractBiliId } from './parser'
+import { resolveBiliShortLink, getVideoDetail, getPlayStream, BILI_QUALITY_OPTIONS, getQualityLabel } from './api'
 import type { BiliVideoInfo, BiliPage } from './types'
+import { sanitizeFilename } from '../../shared/sanitize'
+import type { ShowNotice } from '../../shared/notice'
 
-export default function App(): JSX.Element {
+interface Props {
+  showNotice: ShowNotice
+}
+
+export const BilibiliTab: React.FC<Props> = ({ showNotice }) => {
   const [inputUrl, setInputUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [videoInfo, setVideoInfo] = useState<BiliVideoInfo | null>(null)
   const [pages, setPages] = useState<BiliPage[]>([])
   const [selectedQuality, setSelectedQuality] = useState<number>(80)
-  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [pushing, setPushing] = useState(false)
-  const [recentTasks, setRecentTasks] = useState<any[]>([])
   const [hasFFmpeg, setHasFFmpeg] = useState<boolean | null>(null)
 
-  // 检测宿主 FFmpeg 状态并监听宿主广播的下载进度
+  // 检测宿主 FFmpeg 状态（决定用 DASH 双流混流还是免混流单流）
   useEffect(() => {
     try {
       const sdk = getSDK()
-      // 检测宿主 FFmpeg 状态
       sdk.media?.checkFFmpeg()
         .then((res) => setHasFFmpeg(!!res?.installed))
         .catch(() => setHasFFmpeg(false))
-
-      const unsubscribe = sdk.download.onProgress((info) => {
-        setRecentTasks((prev) => {
-          const idx = prev.findIndex((t) => t.taskId === info.taskId)
-          if (idx >= 0) {
-            const copy = [...prev]
-            copy[idx] = info
-            return copy
-          }
-          return [info, ...prev].slice(0, 10)
-        })
-      })
-      return () => unsubscribe()
     } catch {
       setHasFFmpeg(false)
     }
@@ -45,12 +35,11 @@ export default function App(): JSX.Element {
   const handleParse = async () => {
     const raw = inputUrl.trim()
     if (!raw) {
-      setMsg({ text: '请先输入 B 站视频链接或 BV 号', type: 'error' })
+      showNotice('请先输入 B 站视频链接或 BV 号', 'error')
       return
     }
 
     setLoading(true)
-    setMsg(null)
 
     try {
       const idInfo = extractBiliId(raw)
@@ -60,7 +49,7 @@ export default function App(): JSX.Element {
 
       let bvid = idInfo.bvid
       if (idInfo.shortUrl) {
-        setMsg({ text: '正在还原 b23.tv 短链...', type: 'info' })
+        showNotice('正在还原 b23.tv 短链...', 'info')
         const resolvedBvid = await resolveBiliShortLink(idInfo.shortUrl)
         if (!resolvedBvid) {
           throw new Error('短链解析失败，未重定向到有效视频')
@@ -72,13 +61,13 @@ export default function App(): JSX.Element {
         throw new Error('未能提取到有效的 BV 号')
       }
 
-      setMsg({ text: `正在获取视频详情 (BV: ${bvid})...`, type: 'info' })
+      showNotice(`正在获取视频详情 (BV: ${bvid})...`, 'info')
       const info = await getVideoDetail(bvid)
       setVideoInfo(info)
       setPages(info.pages)
-      setMsg({ text: `成功解析：${info.title} (共 ${info.pages.length} 个分P)`, type: 'success' })
+      showNotice(`成功解析：${info.title} (共 ${info.pages.length} 个分P)`)
     } catch (err: any) {
-      setMsg({ text: err?.message || '解析失败', type: 'error' })
+      showNotice(err?.message || '解析失败', 'error')
     } finally {
       setLoading(false)
     }
@@ -101,12 +90,12 @@ export default function App(): JSX.Element {
     if (!videoInfo) return
     const selectedPages = pages.filter((p) => p.selected)
     if (selectedPages.length === 0) {
-      setMsg({ text: '请至少选择一个分 P 进行下载', type: 'error' })
+      showNotice('请至少选择一个分 P 进行下载', 'error')
       return
     }
 
     setPushing(true)
-    setMsg({ text: `正在提取 ${selectedPages.length} 个选集的流地址并开始下载...`, type: 'info' })
+    showNotice(`正在提取 ${selectedPages.length} 个选集的流地址并开始下载...`, 'info')
 
     const sdk = getSDK()
     let ffmpegAvailable = hasFFmpeg
@@ -124,11 +113,11 @@ export default function App(): JSX.Element {
       try {
         const stream = await getPlayStream(videoInfo.bvid, page.cid, selectedQuality, !!ffmpegAvailable)
         const qualityTag = getQualityLabel(stream.quality || selectedQuality)
-        const cleanTitle = (
+        const cleanTitle = sanitizeFilename(
           selectedPages.length > 1
             ? `${videoInfo.title} - P${page.page} ${page.part} [${qualityTag}]`
             : `${videoInfo.title} [${qualityTag}]`
-        ).replace(/[\\/:*?"<>|]/g, '_').trim()
+        )
 
         await sdk.download.enqueue({
           url: stream.videoUrl,
@@ -154,59 +143,17 @@ export default function App(): JSX.Element {
     }
 
     setPushing(false)
-    setMsg({
-      text: `已成功推入 ${successCount} 个视频至后台下载队列！`,
-      type: 'success'
-    })
+    if (successCount > 0) {
+      showNotice(`已成功推入 ${successCount} 个视频至后台下载队列！`)
+    } else {
+      showNotice('所有分 P 的流地址提取均失败，请检查链接或稍后重试', 'error')
+    }
   }
 
   const selectedCount = pages.filter((p) => p.selected).length
 
   return (
-    <div className="min-h-full bg-slate-900 text-slate-100 p-8 flex flex-col space-y-6">
-      {/* 顶部标题区 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">📺</span>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-white tracking-wide">
-                B站视频/多P选集下载器
-              </h1>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-pink-500/10 text-pink-400 border border-pink-500/20 font-mono">
-                官方插件 v1.0.0
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">
-              支持单视频、多P合集、连载课程，自动提取最高码率并进行无损混流
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => getSDK().download.openSaveDirectory()}
-          className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 transition-colors"
-        >
-          📂 打开保存目录
-        </button>
-      </div>
-
-      {/* 状态提示横幅 */}
-      {msg && (
-        <div
-          className={`p-3.5 rounded-xl border text-xs flex items-center justify-between ${
-            msg.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-              : msg.type === 'error'
-              ? 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-              : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
-          }`}
-        >
-          <span>{msg.text}</span>
-          <button onClick={() => setMsg(null)} className="text-slate-400 hover:text-white">✕</button>
-        </div>
-      )}
-
+    <div className="space-y-6">
       {/* FFmpeg 状态感知横幅 */}
       {hasFFmpeg === false && (
         <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs flex items-center justify-between">
@@ -360,65 +307,6 @@ export default function App(): JSX.Element {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 实时下载动态监控 */}
-      {recentTasks.length > 0 && (
-        <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800 space-y-2.5">
-          <div className="text-xs font-semibold text-slate-400 flex items-center justify-between">
-            <span>📥 当前下载进度</span>
-            <span className="text-[11px] text-emerald-400 font-mono">后台下载中</span>
-          </div>
-
-          <div className="space-y-2">
-            {recentTasks.map((t) => (
-              <div
-                key={t.taskId}
-                className={`p-3 rounded-lg border text-xs space-y-1.5 transition-colors ${
-                  t.status === 'failed'
-                    ? 'bg-rose-950/20 border-rose-900/40'
-                    : 'bg-slate-900/80 border-slate-800/60'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-200 truncate max-w-sm font-medium">{t.filename}</span>
-                  <span className="font-mono text-[11px]">
-                    {t.status === 'completed' ? (
-                      <span className="text-emerald-400 font-medium">✅ 已完成</span>
-                    ) : t.status === 'failed' ? (
-                      <span className="text-rose-400 font-medium">❌ 下载失败</span>
-                    ) : t.status === 'merging' ? (
-                      <span className="text-amber-400 animate-pulse font-medium">⚙️ FFmpeg 音视频合成中...</span>
-                    ) : (
-                      <span className="text-slate-400">{t.speed || ''} ({t.progress}%)</span>
-                    )}
-                  </span>
-                </div>
-
-                {t.status === 'failed' && t.error && (
-                  <div className="text-rose-400 text-[11px] bg-rose-500/10 px-2.5 py-1 rounded border border-rose-500/20 break-all">
-                    {t.error}
-                  </div>
-                )}
-
-                <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 ${
-                      t.status === 'completed'
-                        ? 'bg-emerald-500'
-                        : t.status === 'failed'
-                        ? 'bg-rose-500'
-                        : t.status === 'merging'
-                        ? 'bg-amber-400 animate-pulse'
-                        : 'bg-pink-500'
-                    }`}
-                    style={{ width: `${t.status === 'failed' ? 100 : t.progress}%` }}
-                  />
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

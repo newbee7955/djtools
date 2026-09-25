@@ -1,5 +1,5 @@
 import { getSDK } from '@doujiao/plugin-sdk'
-import type { BiliVideoInfo, BiliStreamResult } from '../types'
+import type { BiliVideoInfo, BiliStreamResult } from './types'
 import { extractBiliId } from './parser'
 
 const DEFAULT_HEADERS = {

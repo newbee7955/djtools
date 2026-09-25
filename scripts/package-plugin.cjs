@@ -136,9 +136,9 @@ async function packagePlugin(pluginRelativeDir) {
   return { id, version, zipFileName, sha256, signature };
 }
 
-// 命令行直接执行支持: node scripts/package-plugin.cjs plugins/douyin
+// 命令行直接执行支持: node scripts/package-plugin.cjs plugins/downloader
 if (require.main === module) {
-  const target = process.argv[2] || 'plugins/douyin';
+  const target = process.argv[2] || 'plugins/downloader';
   packagePlugin(target).catch((err) => {
     console.error('[Packager] 错误:', err);
     process.exit(1);

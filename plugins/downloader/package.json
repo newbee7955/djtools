@@ -1,6 +1,6 @@
 {
-  "name": "@doujiao/plugin-douyin",
-  "version": "1.2.0",
+  "name": "@doujiao/plugin-video-downloader",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {

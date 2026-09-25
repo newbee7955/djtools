@@ -7,10 +7,10 @@ import { definePlugin } from '@doujiao/plugin-sdk'
 // 注册标准插件生命周期
 definePlugin({
   activate: (ctx) => {
-    console.log(`[Plugin:Douyin] 已在宿主沙箱中激活: ${ctx.pluginId} v${ctx.version}`)
+    console.log(`[Plugin:VideoDownloader] 已在宿主沙箱中激活: ${ctx.pluginId} v${ctx.version}`)
   },
   deactivate: () => {
-    console.log('[Plugin:Douyin] 插件沙箱已停用')
+    console.log('[Plugin:VideoDownloader] 插件沙箱已停用')
   }
 })
 
