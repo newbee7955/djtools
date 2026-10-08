@@ -12,6 +12,7 @@ import {
 import { join } from 'path'
 import { existsSync, writeFileSync } from 'fs'
 import type { PinItem, PinOptions } from '@doujiao/plugin-sdk'
+import { PluginViewContainerManager } from './plugin-view'
 
 export class PinManager {
   private static instance: PinManager | null = null
@@ -431,6 +432,8 @@ export class PinManager {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send('plugin:pin:changed', list)
     }
+    // 工作台运行在独立的插件视图中，也需要同步列表和透明度。
+    PluginViewContainerManager.getInstance().sendToPlugin('screen-pin', 'plugin:pin:changed', list)
     // 通知所有贴图窗口
     for (const [, { win }] of this.pins) {
       if (!win.isDestroyed()) {

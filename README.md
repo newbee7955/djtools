@@ -226,7 +226,7 @@ djtools/
 
 ### 下载与安装
 
-前往 [GitHub Releases](https://github.com/newbee7955/djtools/releases/latest) 下载最新正式安装包 `djtools-Setup-1.0.0.exe`，双击运行安装即可。
+前往 [GitHub Releases](https://github.com/newbee7955/djtools/releases/latest) 下载最新正式安装包 `djtools-Setup-1.0.9.exe`，双击运行安装即可。
 
 ### 本地开发与构建
 

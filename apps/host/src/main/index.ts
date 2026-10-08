@@ -6,6 +6,7 @@ import { is } from '@electron-toolkit/utils'
 import { registerPluginScheme, registerPluginProtocol } from './protocol'
 import { setupSecurityGuards } from './security'
 import { PluginViewContainerManager } from './container/plugin-view'
+import { PinManager } from './container/pin-manager'
 import { registerPluginIpcBridge } from './ipc/bridge'
 import { registerHostIpc } from './ipc/host-api'
 import { ProxyManager } from './network/proxy-manager'
@@ -114,6 +115,9 @@ function createWindow(): BrowserWindow {
   // 初始化插件沙箱容器与 IPC
   const containerManager = PluginViewContainerManager.getInstance()
   containerManager.init(win)
+
+  // 在加载宿主界面前注册贴图 IPC 与快捷键，确保插件首次调用即可使用。
+  PinManager.getInstance().init(win)
 
   registerHostIpc(win)
   registerPluginIpcBridge()
@@ -290,6 +294,8 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', async () => {
+  PinManager.getInstance().unregisterShortcuts()
+  PinManager.getInstance().closeAllPins()
   try {
     const { ScreenshotService } = await import('./services/screenshot-service')
     ScreenshotService.getInstance().unregisterGlobalShortcuts()
