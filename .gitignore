@@ -13,3 +13,4 @@ temp_asar/
 apps/host/native/**/build/
 services/*.zip
 *.obj
+.zcode

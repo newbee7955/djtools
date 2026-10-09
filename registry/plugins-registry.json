@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "registryVersion": 112,
-  "updatedAt": "2026-09-20T09:06:37.837Z",
+  "registryVersion": 113,
+  "updatedAt": "2026-10-09T03:09:43.036Z",
   "plugins": [
     {
       "id": "markdown-editor",
@@ -1614,6 +1614,69 @@
               "size": 52617,
               "sha256": "4f024483791afdeab317ed6b514906b0450047b8676e754d04b94357b5253ded",
               "signature": "EXt1Y/12dOaAXnLlXQmvxIKiHn2pxydYu/lePIukodfM/a5tbUUE09a5y1DCSCNaZFGhqkZHX77L3yGxJmrMDQ=="
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "video-downloader",
+      "publisher": "doujiao-official",
+      "name": "视频下载器",
+      "description": "抖音 + B 站双引擎视频下载器：抖音单作品/合集/专题与创作者主页批量抓取、无水印多分辨率选择；B站多 P 选集、1080P60 清晰度选择与音视频自动混流",
+      "icon": "📥",
+      "releases": [
+        {
+          "version": "1.0.0",
+          "channel": "stable",
+          "publishedAt": "2026-10-09T03:09:43.036Z",
+          "changelog": "【v1.0.0】抖音与 B 站下载器合并为统一插件，双 Tab 一键切换：抖音侧支持单作品/合集/专题链接解析、创作者搜索与主页作品批量抓取、无水印多分辨率选择；B站侧支持 BV/AV 号与 b23.tv 短链解析、多 P 选集批量下载、1080P60 等清晰度自主选择与 FFmpeg 无损混流。两平台共用统一的实时下载进度面板。",
+          "engines": {
+            "doujiao": ">=0.2.0",
+            "pluginApi": "^1.0.0"
+          },
+          "permissions": [
+            {
+              "capability": "network.request",
+              "hosts": [
+                "www.douyin.com",
+                "*.douyinvod.com",
+                "*.amemv.com",
+                "api.bilibili.com",
+                "www.bilibili.com",
+                "b23.tv",
+                "*.bilivideo.com",
+                "*.hdslb.com"
+              ],
+              "methods": [
+                "GET",
+                "POST"
+              ]
+            },
+            {
+              "capability": "download.enqueue",
+              "formats": [
+                "mp4",
+                "m4s",
+                "flv"
+              ]
+            },
+            {
+              "capability": "media.merge"
+            },
+            {
+              "capability": "browser.login",
+              "domain": "douyin.com"
+            }
+          ],
+          "artifacts": [
+            {
+              "platform": "any",
+              "arch": "any",
+              "url": "https://raw.githubusercontent.com/newbee7955/djtools/main/registry/releases/video-downloader-v1.0.0.zip",
+              "size": 64489,
+              "sha256": "033f98ef9523bb23dda0c47c4124e174eca187020c0c3711193ae68b94a697a2",
+              "signature": "DcFX4q1YAU3xXe7fHGTUCz43yRCXGqma+rdBbjnf7VS1vO6X/ImS1NeE+KwdSufVmdfnLQeschOHOgYfpmbnAg=="
             }
           ]
         }
