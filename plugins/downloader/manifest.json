@@ -1,0 +1,47 @@
+{
+  "$schema": "https://doujiao.app/schemas/plugin-manifest.v2.json",
+  "id": "video-downloader",
+  "publisher": "doujiao-official",
+  "name": "视频下载器",
+  "version": "1.0.0",
+  "changelog": "【v1.0.0】抖音与 B 站下载器合并为统一插件，双 Tab 一键切换：抖音侧支持单作品/合集/专题链接解析、创作者搜索与主页作品批量抓取、无水印多分辨率选择；B站侧支持 BV/AV 号与 b23.tv 短链解析、多 P 选集批量下载、1080P60 等清晰度自主选择与 FFmpeg 无损混流。两平台共用统一的实时下载进度面板。",
+  "description": "抖音 + B 站双引擎视频下载器：抖音单作品/合集/专题与创作者主页批量抓取、无水印多分辨率选择；B站多 P 选集、1080P60 清晰度选择与音视频自动混流",
+  "icon": "📥",
+  "engines": {
+    "doujiao": ">=0.2.0 <0.3.0",
+    "pluginApi": "^1.0.0"
+  },
+  "entrypoints": {
+    "ui": "dist/index.html"
+  },
+  "permissions": [
+    {
+      "capability": "network.request",
+      "hosts": [
+        "www.douyin.com",
+        "*.douyinvod.com",
+        "*.amemv.com",
+        "api.bilibili.com",
+        "www.bilibili.com",
+        "b23.tv",
+        "*.bilivideo.com",
+        "*.hdslb.com"
+      ],
+      "methods": ["GET", "POST"]
+    },
+    {
+      "capability": "download.enqueue",
+      "formats": ["mp4", "m4s", "flv"]
+    },
+    {
+      "capability": "media.merge"
+    },
+    {
+      "capability": "browser.login",
+      "domain": "douyin.com"
+    }
+  ],
+  "requires": {
+    "host.media.ffmpeg": ">=6 <8"
+  }
+}

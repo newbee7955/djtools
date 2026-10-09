@@ -11,6 +11,15 @@ files:
   - build/icon.ico
   - build/icon.png
   - package.json
+asarUnpack:
+  # Tesseract Node 7 runtime closure for Electron 33 (built-in fetch and zlib).
+  # The unpacked entry/worker cannot resolve siblings inside app.asar.
+  - node_modules/tesseract.js/**
+  - node_modules/tesseract.js-core/**
+  - node_modules/regenerator-runtime/**
+  - node_modules/is-url/**
+  - node_modules/bmp-js/**
+  - node_modules/wasm-feature-detect/**
 extraResources:
   - from: ../../registry
     to: registry

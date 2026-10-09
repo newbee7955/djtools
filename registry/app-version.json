@@ -1,12 +1,12 @@
 {
-  "version": "1.0.9",
-  "releaseDate": "2026-10-08",
+  "version": "1.1.0",
+  "releaseDate": "2026-10-09",
   "productName": "豆角工具箱",
-  "changelog": "1. 修复屏幕贴图管理器未初始化，导致剪贴板贴图 IPC 报错、贴图快捷键不可用的问题\n2. 修复贴图工作台未收到状态通知，导致关闭后卡片不消失、透明度滑块不更新的问题\n3. 贴图工作台在后台也能同步状态；退出时清理贴图窗口、快捷键和鼠标穿透跟踪",
-  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.9/djtools-Setup-1.0.9.exe",
+  "changelog": "1. 新增本地 MCP 服务与 13 个标准工具：支持屏幕截图（区域/全屏）、图片导入、离线 OCR 识别、Markdown 文档读写、系统剪贴板历史与写入、随手记便签管理\n2. 严格遵循最小权限与高安全性：仅监听 127.0.0.1，Token 系统级安全加密，外部敏感调用强制审批，日志元数据脱敏\n3. 包含此前屏幕贴图管理器初始化与工作台通知修复",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.1.0/djtools-Setup-1.1.0.exe",
   "fallbackUrls": [
-    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v1.0.9/djtools-Setup-1.0.9.exe"
+    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v1.1.0/djtools-Setup-1.1.0.exe"
   ],
-  "size": 116579591,
-  "sha256": "4c0c2ba9d108da044af1b4e85b1946f6998ebbe837d64bc27f059f7d3f72c769"
+  "size": 132521659,
+  "sha256": "f2ee5af7bec5245d668d05d2a204344f76b7ca4e264db398655639e4e071f08f"
 }

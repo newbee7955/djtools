@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
+import type { AiToolsHostAPI } from '../../shared/ai-tools-runtime'
 
-export interface HostAPI {
+export interface HostAPI extends AiToolsHostAPI {
   showPlugin: (pluginId: string) => Promise<{ success: boolean }>
   hidePlugin: () => Promise<{ success: boolean }>
   setSidebarWidth?: (width: number) => Promise<{ success: boolean }>

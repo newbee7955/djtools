@@ -23,7 +23,8 @@ const flush = () => new Promise((resolve) => setImmediate(resolve))
 
 function harness() {
   const handlers = new Map(), shortcuts = new Map(), windows = [], shellLoads = [], intervals = new Set()
-  let clipboardImage = null, readyTask, quitting = false
+  let clipboardImage = null, readyTask, finishRuntime, quitting = false
+  const runtimeStarted = new Promise((resolve) => { finishRuntime = resolve })
   class FakeWebContents extends EventEmitter {
     constructor(messages = []) { super(); this.messages = messages; this.destroyed = false }
     isDestroyed() { return this.destroyed }
@@ -106,6 +107,7 @@ function harness() {
     './ipc/bridge': { registerPluginIpcBridge: noop },
     './network/proxy-manager': { ProxyManager: singleton({ async init() {} }) },
     './tray': { AppTrayManager: singleton(tray) },
+    './mcp/host-ipc': { registerAiToolsIpc: noop, startAiToolsRuntime: () => runtimeStarted, async stopAiToolsRuntime() {} },
     './services/screenshot-service': { ScreenshotService: singleton({ init() {}, unregisterGlobalShortcuts() {} }) },
     './services/screen-recording-service': { ScreenRecordingService: singleton({ init() {}, shutdown() {} }) },
     './services/remote-assist/remote-assist-service': { RemoteAssistService: singleton({ onEvent() {}, async disconnect() {} }) },
@@ -144,14 +146,17 @@ function harness() {
       if (!handler) throw new Error("No handler registered for '" + channel + "'")
       return handler({}, ...args)
     },
-    async completeStartup() { await readyTask },
+    async completeStartup() { finishRuntime(); await readyTask },
     async quit() {
-      for (const listener of app.listeners('before-quit')) await listener()
+      // The first event waits for the AI runtime; app.quit() then emits before-quit again.
+      for (let i = 0; i < 2; i++) {
+        for (const listener of app.listeners('before-quit')) await listener({ preventDefault() {} })
+      }
     }
   }
 }
 
-test('clipboard pin IPC is callable before the shell loads', async () => {
+test('clipboard pin IPC is callable before the shell loads and while AI startup is pending', async () => {
   const h = harness()
   await flush()
   assert.equal(h.invoke('plugin:pin:from-clipboard'), null)
