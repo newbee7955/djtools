@@ -1,7 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { AiToolsHostAPI } from '../shared/ai-tools-runtime'
 
 // 仅向宿主外壳渲染页面暴露特权管理 API
+const aiToolsAPI: AiToolsHostAPI = {
+  aiToolsStatus: () => ipcRenderer.invoke('host:ai-tools:status'),
+  aiToolsSetEnabled: (enabled: boolean) => ipcRenderer.invoke('host:ai-tools:set-enabled', enabled),
+  aiToolsSetToolEnabled: (name: string, enabled: boolean) => ipcRenderer.invoke('host:ai-tools:set-tool-enabled', name, enabled),
+  aiToolsSelectDirectory: () => ipcRenderer.invoke('host:ai-tools:select-directory'),
+  aiToolsConnectionConfig: () => ipcRenderer.invoke('host:ai-tools:connection-config'),
+  aiToolsRotateToken: () => ipcRenderer.invoke('host:ai-tools:rotate-token'),
+  aiToolsPrepareOcr: () => ipcRenderer.invoke('host:ai-tools:prepare-ocr'),
+  aiToolsExecute: (name: string, args: Record<string, unknown>) => ipcRenderer.invoke('host:ai-tools:execute', name, args),
+  aiToolsClearCalls: () => ipcRenderer.invoke('host:ai-tools:clear-calls'),
+}
 const hostAPI = {
+  ...aiToolsAPI,
   // 插件容器切换与管理
   showPlugin: (pluginId: string) => ipcRenderer.invoke('host:plugins:show', pluginId),
   hidePlugin: () => ipcRenderer.invoke('host:plugins:hide'),

@@ -1,12 +1,12 @@
 {
-  "version": "1.0.8",
-  "releaseDate": "2026-09-20",
+  "version": "1.1.0",
+  "releaseDate": "2026-10-09",
   "productName": "豆角工具箱",
-  "changelog": "1. 全新 D 形品牌图标正式上线，应用主图标、安装程序、任务栏、系统托盘与桌面/开始菜单快捷方式全面统一焕新\n2. 图标基于高分辨率母版重新派生，小尺寸（16/20/24px）显示更清晰锐利，圆角透明边缘无暗边\n3. 清除历史遗留的旧图标文件，解决托盘图标不跟随版本更新、仍显示旧 Logo 的问题\n4. 汇总此前屏幕贴图插件增强：Ctrl+V 快捷粘贴、拖放图片一键贴桌面、剪贴板文件路径/URL/网页图片识别",
-  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.0.8/djtools-Setup-1.0.8.exe",
+  "changelog": "1. 新增本地 MCP 服务与 13 个标准工具：支持屏幕截图（区域/全屏）、图片导入、离线 OCR 识别、Markdown 文档读写、系统剪贴板历史与写入、随手记便签管理\n2. 严格遵循最小权限与高安全性：仅监听 127.0.0.1，Token 系统级安全加密，外部敏感调用强制审批，日志元数据脱敏\n3. 包含此前屏幕贴图管理器初始化与工作台通知修复",
+  "downloadUrl": "https://github.com/newbee7955/djtools/releases/download/v1.1.0/djtools-Setup-1.1.0.exe",
   "fallbackUrls": [
-    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v1.0.8/djtools-Setup-1.0.8.exe"
+    "https://ghproxy.net/https://github.com/newbee7955/djtools/releases/download/v1.1.0/djtools-Setup-1.1.0.exe"
   ],
-  "size": 116579531,
-  "sha256": "bd2d70dbefacc9b1de5b92b0a22128d72839d4567159448c8f26c208c18c484b"
+  "size": 132521659,
+  "sha256": "f2ee5af7bec5245d668d05d2a204344f76b7ca4e264db398655639e4e071f08f"
 }

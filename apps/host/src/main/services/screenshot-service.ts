@@ -21,6 +21,9 @@ export interface ScreenCaptureOptions {
   mode?: 'snip' | 'fullscreen'
   trigger?: 'shortcut' | 'manual'
   selectionOnly?: boolean
+  /** Return the image only to the initiating host call, without legacy delivery. */
+  directResultOnly?: boolean
+  signal?: AbortSignal
 }
 
 export interface ScreenCaptureResult {
@@ -37,6 +40,8 @@ export class ScreenshotService {
   private captureWindow: BrowserWindow | null = null
   private isCapturing = false
   private pendingResolve: ((res: ScreenCaptureResult) => void) | null = null
+  private captureGeneration = 0
+  private cancelPreparation: (() => void) | null = null
   private currentCaptureData: {
     bgDataUrl: string
     screenW: number
@@ -45,31 +50,39 @@ export class ScreenshotService {
     displayX: number
     displayY: number
     selectionOnly: boolean
+    directResultOnly: boolean
   } | null = null
 
   private constructor() {
     this.registerIpcHandlers()
   }
 
-  public cancelCapture(): void {
-    if (this.captureWindow && !this.captureWindow.isDestroyed()) {
-      this.captureWindow.close()
-      this.captureWindow = null
-    }
+  public cancelCapture(generation = this.captureGeneration): void {
+    if (!this.isCapturing || generation !== this.captureGeneration) return
+    this.completeCapture({ success: false, canceled: true }, generation)
+  }
+
+  private completeCapture(result: ScreenCaptureResult, generation: number, restoreWindow = true): void {
+    if (generation !== this.captureGeneration) return
+    // Detach all state before close(), whose events can run immediately or later.
+    const window = this.captureWindow
+    const resolve = this.pendingResolve
+    const cancelPreparation = this.cancelPreparation
+    this.captureGeneration++
+    this.captureWindow = null
+    this.pendingResolve = null
+    this.cancelPreparation = null
     this.isCapturing = false
     this.currentCaptureData = null
-
-    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+    if (window && !window.isDestroyed()) window.close()
+    if (restoreWindow && this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (this.mainWindow.isMinimized()) this.mainWindow.restore()
       this.mainWindow.show()
       this.mainWindow.focus()
     }
 
-    if (this.pendingResolve) {
-      const cb = this.pendingResolve
-      this.pendingResolve = null
-      cb({ success: false, canceled: true })
-    }
+    resolve?.(result)
+    cancelPreparation?.()
   }
 
   public static getInstance(): ScreenshotService {
@@ -130,6 +143,7 @@ export class ScreenshotService {
    * 核心截图入口方法 (供全局快捷键、宿主 IPC 与插件 SDK 统一调用)
    */
   public async capture(options?: ScreenCaptureOptions): Promise<ScreenCaptureResult> {
+    if (options?.signal?.aborted) return { success: false, canceled: true }
     if (this.isCapturing) {
       if (this.captureWindow && !this.captureWindow.isDestroyed()) {
         this.captureWindow.focus()
@@ -138,39 +152,39 @@ export class ScreenshotService {
     }
 
     this.isCapturing = true
+    const generation = ++this.captureGeneration
+    const canceled = new Promise<void>((resolve) => { this.cancelPreparation = resolve })
+    const abort = () => this.cancelCapture(generation)
+    options?.signal?.addEventListener('abort', abort, { once: true })
     const wasMainWindowVisible = Boolean(this.mainWindow && !this.mainWindow.isDestroyed() && this.mainWindow.isVisible())
-
-    // 1. 如果需要隐藏主窗口，先隐藏并等待重绘
-    if (options?.hideWindow !== false && wasMainWindowVisible && this.mainWindow) {
-      this.mainWindow.hide()
-      await new Promise((resolve) => setTimeout(resolve, 200))
-    }
-
     try {
+      // 1. 如果需要隐藏主窗口，先隐藏并等待重绘
+      if (options?.hideWindow !== false && wasMainWindowVisible && this.mainWindow) {
+        this.mainWindow.hide()
+        await Promise.race([new Promise((resolve) => setTimeout(resolve, 200)), canceled])
+      }
+      if (generation !== this.captureGeneration) return { success: false, canceled: true }
       // 2. 获取鼠标所在显示器
       const cursorPoint = screen.getCursorScreenPoint()
       const display = screen.getDisplayNearestPoint(cursorPoint)
       const { bounds, scaleFactor } = display
 
       // 3. 截取当前屏幕原生底图
-      const fullImageDataUrl = await this.captureDisplay(display)
+      const fullImageDataUrl = await Promise.race([this.captureDisplay(display), canceled.then(() => null)])
+      if (generation !== this.captureGeneration) return { success: false, canceled: true }
       if (!fullImageDataUrl) {
         throw new Error('未获取到有效屏幕截图数据')
       }
 
       // 4. 全屏直截模式 (不弹出选区遮罩)
       if (options?.mode === 'fullscreen') {
-        const img = nativeImage.createFromDataURL(fullImageDataUrl)
-        clipboard.writeImage(img)
-
-        // 恢复主窗口
-        if (wasMainWindowVisible || options?.trigger === 'shortcut') {
-          this.mainWindow?.show()
-          this.mainWindow?.focus()
+        if (!options.directResultOnly && !options.selectionOnly) {
+          const img = nativeImage.createFromDataURL(fullImageDataUrl)
+          clipboard.writeImage(img)
         }
         const result: ScreenCaptureResult = { success: true, dataUrl: fullImageDataUrl }
-        this.notifyActivePlugin(result)
-        this.isCapturing = false
+        if (!options.directResultOnly && !options.selectionOnly) this.notifyActivePlugin(result)
+        this.completeCapture(result, generation, wasMainWindowVisible || options?.trigger === 'shortcut')
         return result
       }
 
@@ -184,7 +198,8 @@ export class ScreenshotService {
           scaleFactor,
           displayX: bounds.x,
           displayY: bounds.y,
-          selectionOnly: options?.selectionOnly === true
+          selectionOnly: options?.selectionOnly === true,
+          directResultOnly: options?.directResultOnly === true
         }
 
         const preloadPath = existsSync(join(__dirname, '../preload/screenshot.cjs'))
@@ -224,18 +239,18 @@ export class ScreenshotService {
         captureWin.webContents.on('before-input-event', (_, input) => {
           if (input.key === 'Escape' && input.type === 'keyDown') {
             console.log('[ScreenshotService] 接收到底层 Esc 按键，退出截图模式')
-            this.cancelCapture()
+            this.cancelCapture(generation)
           }
         })
 
         // 安全防护 2：加载失败与崩溃守护
         captureWin.webContents.on('did-fail-load', (_, errorCode, errorDescription) => {
           console.error('[ScreenshotService] 截图层加载失败:', errorCode, errorDescription)
-          this.cancelCapture()
+          this.cancelCapture(generation)
         })
         captureWin.webContents.on('render-process-gone', (_, details) => {
           console.error('[ScreenshotService] 截图层渲染进程异常终止:', details)
-          this.cancelCapture()
+          this.cancelCapture(generation)
         })
 
         // 将轻量静态 HTML 模板写入 userData 缓存并以本地文件形式加载 (仅 ~25KB，彻底解决超长 data: URL 导致 Chromium 报错卡死的问题)
@@ -249,28 +264,21 @@ export class ScreenshotService {
 
         captureWin.loadFile(overlayHtmlPath).catch((loadErr) => {
           console.error('[ScreenshotService] 加载截图层文件失败:', loadErr)
-          this.cancelCapture()
+          this.cancelCapture(generation)
         })
 
         captureWin.on('closed', () => {
-          this.captureWindow = null
-          this.isCapturing = false
-          this.currentCaptureData = null
-          if (this.pendingResolve) {
-            const cb = this.pendingResolve
-            this.pendingResolve = null
-            cb({ success: false, canceled: true })
-          }
+          this.cancelCapture(generation)
         })
       })
     } catch (err: any) {
+      if (generation !== this.captureGeneration) return { success: false, canceled: true }
       console.error('[ScreenshotService] 截图流程失败:', err)
-      this.isCapturing = false
-      if (wasMainWindowVisible && this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.show()
-        this.mainWindow.focus()
-      }
-      return { success: false, error: err?.message || '屏幕捕获失败' }
+      const result = { success: false, error: err?.message || '屏幕捕获失败' }
+      this.completeCapture(result, generation, wasMainWindowVisible)
+      return result
+    } finally {
+      options?.signal?.removeEventListener('abort', abort)
     }
   }
 
@@ -420,18 +428,26 @@ $b.Dispose()
    * 注册主进程与截图弹窗 / 插件之间的通信事件
    */
   private registerIpcHandlers(): void {
+    const handle = (channel: string, listener: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => unknown) => {
+      ipcMain.handle(channel, (event, ...args) => {
+        if (!this.captureWindow || this.captureWindow.isDestroyed() || event.sender !== this.captureWindow.webContents) return { success: false }
+        return listener(event, ...args)
+      })
+    }
     // 0. 获取截图初始底图与尺寸 (通过 IPC 安全传递，避免超长 URL 崩溃卡死)
-    ipcMain.handle('host:screenshot:get-initial-data', async () => {
+    handle('host:screenshot:get-initial-data', async () => {
       return this.currentCaptureData
     })
 
     // 截图完成 (带选区裁剪后结果)
-    ipcMain.handle(
+    handle(
       'host:screenshot:finish',
       async (_, payload: { dataUrl: string; bounds?: { x: number; y: number; width: number; height: number } }) => {
         const { dataUrl, bounds } = payload
         const captureData = this.currentCaptureData
         const selectionOnly = captureData?.selectionOnly === true
+        const directResultOnly = captureData?.directResultOnly === true
+        const generation = this.captureGeneration
         const resolvedBounds =
           selectionOnly && bounds && captureData
             ? toGlobalRecordingBounds(bounds, {
@@ -441,24 +457,9 @@ $b.Dispose()
             : bounds
 
         // 1. 自动存入系统剪贴板
-        if (!selectionOnly && dataUrl) {
+        if (!selectionOnly && !directResultOnly && dataUrl) {
           const img = nativeImage.createFromDataURL(dataUrl)
           clipboard.writeImage(img)
-        }
-
-        // 2. 关闭截图选区窗口
-        if (this.captureWindow && !this.captureWindow.isDestroyed()) {
-          this.captureWindow.close()
-          this.captureWindow = null
-        }
-        this.isCapturing = false
-        this.currentCaptureData = null
-
-        // 3. 唤醒并聚焦主窗口
-        if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-          if (this.mainWindow.isMinimized()) this.mainWindow.restore()
-          this.mainWindow.show()
-          this.mainWindow.focus()
         }
 
         // 4. 通知当前活跃视图（若有），不再强制跳转切入图片编辑插件
@@ -467,101 +468,61 @@ $b.Dispose()
           dataUrl: selectionOnly ? undefined : dataUrl,
           bounds: resolvedBounds
         }
-        if (!selectionOnly) {
+        if (!selectionOnly && !directResultOnly) {
           this.notifyActivePlugin(result)
         }
 
-        // 5. 回调 resolve (如由插件 API 调用)
-        if (this.pendingResolve) {
-          const cb = this.pendingResolve
-          this.pendingResolve = null
-          cb(result)
-        }
+        this.completeCapture(result, generation)
         return { success: true }
       }
     )
 
     // 取消截图
-    ipcMain.handle('host:screenshot:cancel', async () => {
+    handle('host:screenshot:cancel', async () => {
       this.cancelCapture()
       return { success: true }
     })
 
     // 单独写入剪贴板并退出截图
-    ipcMain.handle('host:screenshot:copy', async (_, dataUrl: string) => {
+    handle('host:screenshot:copy', async (_, dataUrl: string) => {
+      if (this.currentCaptureData?.directResultOnly || this.currentCaptureData?.selectionOnly) return { success: false }
+      const generation = this.captureGeneration
       if (dataUrl) {
         const img = nativeImage.createFromDataURL(dataUrl)
         clipboard.writeImage(img)
       }
-      if (this.captureWindow && !this.captureWindow.isDestroyed()) {
-        this.captureWindow.close()
-        this.captureWindow = null
-      }
-      this.isCapturing = false
-
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.show()
-        this.mainWindow.focus()
-      }
-
-      if (this.pendingResolve) {
-        const cb = this.pendingResolve
-        this.pendingResolve = null
-        cb({ success: true, dataUrl })
-      }
+      this.completeCapture({ success: true, dataUrl }, generation)
       return { success: true }
     })
 
     // 另存为文件并退出截图
-    ipcMain.handle('host:screenshot:save-as', async (_, dataUrl: string) => {
+    handle('host:screenshot:save-as', async (_, dataUrl: string) => {
+      if (this.currentCaptureData?.directResultOnly || this.currentCaptureData?.selectionOnly) return { success: false }
+      const generation = this.captureGeneration
       if (!dataUrl) return { canceled: true }
       const res = await dialog.showSaveDialog({
         title: '保存截图为图片',
         defaultPath: `截图_${Date.now()}.png`,
         filters: [{ name: 'PNG Image', extensions: ['png'] }]
       })
+      if (generation !== this.captureGeneration) return { success: false, canceled: true }
       if (!res.canceled && res.filePath) {
         const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '')
         writeFileSync(res.filePath, Buffer.from(base64Data, 'base64'))
         shell.showItemInFolder(res.filePath)
       }
 
-      if (this.captureWindow && !this.captureWindow.isDestroyed()) {
-        this.captureWindow.close()
-        this.captureWindow = null
-      }
-      this.isCapturing = false
-
-      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-        this.mainWindow.show()
-        this.mainWindow.focus()
-      }
-
-      if (this.pendingResolve) {
-        const cb = this.pendingResolve
-        this.pendingResolve = null
-        cb({ success: true, dataUrl })
-      }
+      this.completeCapture({ success: true, dataUrl }, generation)
       return { success: true }
     })
 
     // 贴图到桌面并退出截图模式
-    ipcMain.handle(
+    handle(
       'host:screenshot:pin',
       async (_, payload: { dataUrl: string; bounds?: { x: number; y: number; width: number; height: number } }) => {
+        if (this.currentCaptureData?.directResultOnly || this.currentCaptureData?.selectionOnly) return { success: false }
         const { dataUrl, bounds } = payload
-        if (this.captureWindow && !this.captureWindow.isDestroyed()) {
-          this.captureWindow.close()
-          this.captureWindow = null
-        }
-        this.isCapturing = false
-        this.currentCaptureData = null
-
-        if (this.pendingResolve) {
-          const cb = this.pendingResolve
-          this.pendingResolve = null
-          cb({ success: true, dataUrl, bounds })
-        }
+        this.completeCapture({ success: true, dataUrl, bounds }, this.captureGeneration, false)
 
         if (dataUrl) {
           const { PinManager } = await import('../container/pin-manager')
@@ -575,7 +536,8 @@ $b.Dispose()
     )
 
     // 复制吸取的颜色字符串
-    ipcMain.handle('host:screenshot:copy-color', async (_, text: string) => {
+    handle('host:screenshot:copy-color', async (_, text: string) => {
+      if (this.currentCaptureData?.directResultOnly || this.currentCaptureData?.selectionOnly) return { success: false }
       if (text) {
         clipboard.writeText(text)
         return { success: true }
@@ -895,6 +857,7 @@ $b.Dispose()
       let screenH = window.innerHeight;
       let scaleFactor = window.devicePixelRatio || 1;
       let selectionOnly = false;
+      let directResultOnly = false;
 
       try {
         if (window.screenshotAPI?.getInitialData) {
@@ -905,6 +868,7 @@ $b.Dispose()
             screenH = initData.screenH || screenH;
             scaleFactor = initData.scaleFactor || scaleFactor;
             selectionOnly = initData.selectionOnly === true;
+            directResultOnly = initData.directResultOnly === true;
           }
         }
       } catch (err) {
@@ -937,12 +901,14 @@ $b.Dispose()
     const textOverlay = document.getElementById('text-input-overlay');
     const textInput   = document.getElementById('text-input');
 
-    if (selectionOnly) {
-      guideBanner.innerHTML = '<span>拖拽鼠标选择录制区域</span><span class="kbd">Enter 开始录制</span><span class="kbd">Space 全屏</span><span class="kbd">Esc 取消</span>';
+    if (selectionOnly || directResultOnly) {
       ['btn-pin', 'btn-save', 'btn-copy'].forEach((id) => {
         const button = document.getElementById(id);
         if (button) button.style.display = 'none';
       });
+    }
+    if (selectionOnly) {
+      guideBanner.innerHTML = '<span>拖拽鼠标选择录制区域</span><span class="kbd">Enter 开始录制</span><span class="kbd">Space 全屏</span><span class="kbd">Esc 取消</span>';
       const finishButton = document.getElementById('btn-finish');
       finishButton.textContent = '开始录制';
       finishButton.title = '确认录制区域 (Enter)';
@@ -1538,6 +1504,7 @@ $b.Dispose()
       }
     }
     function doPin() {
+      if (selectionOnly || directResultOnly) return;
       commitTextIfActive();
       const d = getCroppedDataUrl() || bgDataUrl;
       if (window.screenshotAPI?.pin) {
@@ -1550,6 +1517,7 @@ $b.Dispose()
       }
     }
     function doCopy() {
+      if (selectionOnly || directResultOnly) return;
       commitTextIfActive();
       const d = getCroppedDataUrl() || bgDataUrl;
       if (window.screenshotAPI?.copy) {
@@ -1559,6 +1527,7 @@ $b.Dispose()
       }
     }
     function doSave() {
+      if (selectionOnly || directResultOnly) return;
       commitTextIfActive();
       const d = getCroppedDataUrl() || bgDataUrl;
       if (window.screenshotAPI?.saveAs) {
@@ -1598,7 +1567,7 @@ $b.Dispose()
         doPin();
         return;
       }
-      if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey) {
+      if (!selectionOnly && !directResultOnly && (e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey) {
         if (phase === 'select' && magnifier.style.display !== 'none') {
           e.preventDefault();
           if (e.shiftKey) {

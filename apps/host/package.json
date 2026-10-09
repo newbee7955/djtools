@@ -1,6 +1,6 @@
 {
   "name": "@doujiao/host",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "豆角工具箱 - 极简模块化多功能桌面工具箱",
   "author": "Doujiao Team",
   "license": "Apache-2.0",
@@ -17,18 +17,20 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web"
   },
   "dependencies": {
-    "@doujiao/plugin-sdk": "*",
     "@electron-toolkit/utils": "^3.0.0",
     "@marsaud/smb2": "^0.18.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "busboy": "^1.6.0",
     "electron-log": "^5.2.0",
     "electron-store": "^10.0.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "tesseract.js": "7.0.0",
     "ws": "^8.21.3"
   },
   "devDependencies": {
+    "@doujiao/plugin-sdk": "*",
     "@types/busboy": "^1.5.4",
     "@types/node": "^22.10.5",
     "@types/qrcode": "^1.5.6",

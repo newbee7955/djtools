@@ -6,10 +6,12 @@ import { is } from '@electron-toolkit/utils'
 import { registerPluginScheme, registerPluginProtocol } from './protocol'
 import { setupSecurityGuards } from './security'
 import { PluginViewContainerManager } from './container/plugin-view'
+import { PinManager } from './container/pin-manager'
 import { registerPluginIpcBridge } from './ipc/bridge'
 import { registerHostIpc } from './ipc/host-api'
 import { ProxyManager } from './network/proxy-manager'
 import { AppTrayManager } from './tray'
+import { registerAiToolsIpc, startAiToolsRuntime, stopAiToolsRuntime } from './mcp/host-ipc'
 
 // Windows 控制台编码加固：自动将终端代码页切换为 UTF-8 (65001)，仅在开发模式下生效
 if (process.platform === 'win32' && is.dev) {
@@ -115,7 +117,11 @@ function createWindow(): BrowserWindow {
   const containerManager = PluginViewContainerManager.getInstance()
   containerManager.init(win)
 
+  // 在加载宿主界面前注册贴图 IPC 与快捷键，确保插件首次调用即可使用。
+  PinManager.getInstance().init(win)
+
   registerHostIpc(win)
+  registerAiToolsIpc(win)
   registerPluginIpcBridge()
 
   // 加载宿主 Shell 界面
@@ -150,6 +156,7 @@ app.whenReady().then(async () => {
   // 3. 初始化全局屏幕截图服务 (注册全局快捷键 Alt+Shift+A 与 Ctrl+Alt+A)
   const { ScreenshotService } = await import('./services/screenshot-service')
   ScreenshotService.getInstance().init(mainWindow)
+  await startAiToolsRuntime()
 
   // 3.1 初始化录屏服务窗口守卫
   const { ScreenRecordingService } = await import('./services/screen-recording-service')
@@ -289,7 +296,18 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.on('before-quit', async () => {
+let aiToolsQuitComplete = false
+app.on('before-quit', async (event) => {
+  if (!aiToolsQuitComplete) {
+    event.preventDefault()
+    AppTrayManager.getInstance().setQuitting(true)
+    await stopAiToolsRuntime().catch(() => {})
+    aiToolsQuitComplete = true
+    app.quit()
+    return
+  }
+  PinManager.getInstance().unregisterShortcuts()
+  PinManager.getInstance().closeAllPins()
   try {
     const { ScreenshotService } = await import('./services/screenshot-service')
     ScreenshotService.getInstance().unregisterGlobalShortcuts()

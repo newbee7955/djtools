@@ -609,6 +609,14 @@ export class PluginViewContainerManager {
     }
   }
 
+  /** 向指定插件发送 IPC 消息，包括后台缓存的视图。 */
+  public sendToPlugin(pluginId: string, channel: string, ...args: any[]): void {
+    const instance = this.views.get(pluginId)
+    if (instance && !instance.view.webContents.isDestroyed()) {
+      instance.view.webContents.send(channel, ...args)
+    }
+  }
+
   private createPluginView(pluginId: string): PluginViewInstance {
     const pluginPreloadPath = existsSync(join(__dirname, '../preload/plugin.cjs'))
       ? join(__dirname, '../preload/plugin.cjs')

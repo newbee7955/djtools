@@ -201,7 +201,7 @@ test('screenshot selection mode returns bounds without clipboard side effects', 
 
   assert.match(source, /public async selectRegion\(/)
   assert.match(source, /selectionOnly: true/)
-  assert.match(source, /if \(!selectionOnly && dataUrl\)/)
+  assert.match(source, /if \(!selectionOnly && !directResultOnly && dataUrl\)/)
   assert.match(source, /toGlobalRecordingBounds\(bounds/)
   assert.match(source, /dataUrl: selectionOnly \? undefined : dataUrl/)
 })

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import appIcon from './assets/app-icon.png'
+import AiToolsPanel from './components/AiToolsPanel'
 
 interface PluginInfo {
   id: string
@@ -2034,6 +2035,8 @@ export default function App(): JSX.Element {
                   管理应用通用参数、多媒体组件与数据存储
                 </p>
               </div>
+
+              <AiToolsPanel theme={currentTheme} />
 
               <div className={`p-5 rounded-xl border space-y-5 ${currentTheme.cardBg} ${currentTheme.border}`}>
                 {/* 应用主体与界面风格 */}
